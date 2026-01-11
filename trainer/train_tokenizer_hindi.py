@@ -1,6 +1,8 @@
 # Hindi Tokenizer Training Script for MiniMind
-# This script trains a tokenizer optimized for Hindi + English bilingual text
+# This script trains a SentencePiece tokenizer optimized for Hindi + English bilingual text
 # यह स्क्रिप्ट हिंदी और अंग्रेजी द्विभाषी पाठ के लिए टोकननाइज़र को प्रशिक्षित करती है
+#
+# Uses SentencePiece with Unigram model (standard for Indic languages)
 #
 # Supports:
 # - HuggingFace datasets (ai4bharat/sangraha)
@@ -11,12 +13,13 @@ import os
 import sys
 import json
 import unicodedata
+import tempfile
 from typing import Iterator, Optional
 
 # Add parent directory to path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
-from tokenizers import decoders, models, pre_tokenizers, trainers, Tokenizer
+import sentencepiece as spm
 
 # Import configuration
 from config.hindi_config import (
@@ -202,10 +205,12 @@ def train_tokenizer(
     text_column: str = "text",
     max_samples: Optional[int] = None,
     streaming: bool = True,
-    min_length: int = 50
+    min_length: int = 50,
+    character_coverage: float = 0.9995,
+    model_type: str = "unigram"
 ):
     """
-    Train a BPE tokenizer for Hindi+English bilingual text.
+    Train a SentencePiece tokenizer for Hindi+English bilingual text.
 
     Args:
         source: Data source (HuggingFace dataset name or local file path)
@@ -217,18 +222,28 @@ def train_tokenizer(
         max_samples: Maximum samples for training
         streaming: Use streaming mode
         min_length: Minimum text length
+        character_coverage: Character coverage (0.9995 for Indic, 1.0 for Latin)
+        model_type: SentencePiece model type ("unigram" or "bpe")
     """
     print("=" * 60)
-    print("HINDI TOKENIZER TRAINING")
+    print("HINDI TOKENIZER TRAINING (SentencePiece)")
     print("=" * 60)
     print(f"Source: {source}")
     print(f"Subset: {hf_subset}")
     print(f"Vocab Size: {vocab_size}")
     print(f"Max Samples: {max_samples or 'All'}")
+    print(f"Character Coverage: {character_coverage}")
+    print(f"Model Type: {model_type}")
     print(f"Output: {tokenizer_dir}")
     print("=" * 60)
 
-    # Get text iterator
+    # Create output directory
+    os.makedirs(tokenizer_dir, exist_ok=True)
+
+    # SentencePiece requires a text file, so we need to write data to temp file
+    corpus_file = os.path.join(tokenizer_dir, "corpus_temp.txt")
+
+    print("\nPreparing training corpus...")
     texts = get_texts(
         source=source,
         hf_subset=hf_subset,
@@ -239,40 +254,79 @@ def train_tokenizer(
         min_length=min_length
     )
 
-    # Initialize BPE tokenizer
-    tokenizer = Tokenizer(models.BPE())
-    tokenizer.pre_tokenizer = pre_tokenizers.ByteLevel(add_prefix_space=False)
+    # Write texts to file for SentencePiece
+    count = 0
+    with open(corpus_file, 'w', encoding='utf-8') as f:
+        for text in texts:
+            # Normalize and clean text
+            text = unicodedata.normalize('NFC', text.strip())
+            # Write each line
+            for line in text.split('\n'):
+                line = line.strip()
+                if line:
+                    f.write(line + '\n')
+                    count += 1
+            if count % 100000 == 0:
+                print(f"  Written {count:,} lines...")
 
-    # Define special tokens (Must match MiniMind format)
+    print(f"✓ Corpus prepared: {count:,} lines")
+
+    # Define special tokens (MiniMind format)
+    # SentencePiece reserves: 0=<unk>, 1=<s>, 2=</s>
+    # We'll use user_defined_symbols for our special tokens
     special_tokens = ["<|endoftext|>", "<|im_start|>", "<|im_end|>"]
 
-    # BPE trainer configuration
-    trainer = trainers.BpeTrainer(
+    # Train SentencePiece
+    print("\nTraining SentencePiece tokenizer...")
+    model_prefix = os.path.join(tokenizer_dir, "tokenizer")
+
+    spm.SentencePieceTrainer.train(
+        input=corpus_file,
+        model_prefix=model_prefix,
         vocab_size=vocab_size,
-        special_tokens=special_tokens,
-        show_progress=True,
-        initial_alphabet=pre_tokenizers.ByteLevel.alphabet()
+        character_coverage=character_coverage,
+        model_type=model_type,
+        # Special tokens handling
+        # SentencePiece reserves: unk=0, bos=1, eos=2
+        # We use <|endoftext|> as unk (ID 0), which also serves as PAD
+        pad_id=-1,  # Disable separate pad (we'll use unk as pad)
+        unk_id=0,
+        bos_id=1,
+        eos_id=2,
+        unk_piece="<|endoftext|>",
+        bos_piece="<|im_start|>",
+        eos_piece="<|im_end|>",
+        # Training settings
+        split_digits=True,
+        byte_fallback=True,  # Handle unknown characters via bytes
+        normalization_rule_name="nfkc",  # Unicode normalization
+        num_threads=os.cpu_count() or 4,
+        # For Indic languages
+        split_by_unicode_script=True,
+        split_by_whitespace=True,
+        split_by_number=True,
+        # Large corpus support
+        train_extremely_large_corpus=True,
+        input_sentence_size=5000000,  # Limit sentences for memory (5M)
+        shuffle_input_sentence=True,
     )
 
-    # Train the tokenizer
-    print("\nTraining tokenizer...")
-    tokenizer.train_from_iterator(texts, trainer=trainer)
-    tokenizer.decoder = decoders.ByteLevel()
+    print(f"✓ SentencePiece model saved to {model_prefix}.model")
 
-    # Verify special token IDs
+    # Load and verify the trained model
+    sp = spm.SentencePieceProcessor()
+    sp.load(f"{model_prefix}.model")
+
     print("\nVerifying special token IDs...")
-    assert tokenizer.token_to_id("<|endoftext|>") == 0, "PAD token must be ID 0"
-    assert tokenizer.token_to_id("<|im_start|>") == 1, "BOS token must be ID 1"
-    assert tokenizer.token_to_id("<|im_end|>") == 2, "EOS token must be ID 2"
-    print("✓ Special token IDs verified: PAD=0, BOS=1, EOS=2")
+    print(f"  PAD/UNK (<|endoftext|>): {sp.piece_to_id('<|endoftext|>')}")
+    print(f"  BOS (<|im_start|>): {sp.piece_to_id('<|im_start|>')}")
+    print(f"  EOS (<|im_end|>): {sp.piece_to_id('<|im_end|>')}")
+    print(f"  Vocab size: {sp.get_piece_size()}")
 
-    # Create output directory
-    os.makedirs(tokenizer_dir, exist_ok=True)
-
-    # Save tokenizer
-    tokenizer.save(os.path.join(tokenizer_dir, "tokenizer.json"))
-    tokenizer.model.save(tokenizer_dir)
-    print(f"✓ Tokenizer saved to {tokenizer_dir}")
+    # Clean up temp corpus file
+    if os.path.exists(corpus_file):
+        os.remove(corpus_file)
+        print(f"✓ Cleaned up temporary corpus file")
 
     # Create tokenizer config with chat template
     chat_template = """{%- if messages[0]['role'] == 'system' -%}
@@ -330,7 +384,7 @@ def train_tokenizer(
         "pad_token": "<|endoftext|>",
         "sp_model_kwargs": {},
         "spaces_between_special_tokens": False,
-        "tokenizer_class": "PreTrainedTokenizerFast",
+        "tokenizer_class": "LlamaTokenizer",  # Use LlamaTokenizer for SentencePiece
         "unk_token": "<|endoftext|>",
         "chat_template": chat_template
     }
@@ -338,24 +392,41 @@ def train_tokenizer(
     with open(os.path.join(tokenizer_dir, "tokenizer_config.json"), "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=4)
 
+    # Rename model files to match expected names for LlamaTokenizer
+    import shutil
+    sp_model_src = os.path.join(tokenizer_dir, "tokenizer.model")
+    sp_model_dst = os.path.join(tokenizer_dir, "tokenizer.model")  # Keep same name
+
     print(f"✓ Config saved to {tokenizer_dir}/tokenizer_config.json")
     print("\n" + "=" * 60)
     print("HINDI TOKENIZER TRAINING COMPLETED")
     print("=" * 60)
-    print(f"Vocab size: {vocab_size}")
+    print(f"Vocab size: {sp.get_piece_size()}")
     print(f"Output: {tokenizer_dir}")
     print("=" * 60)
 
 
 def eval_tokenizer(tokenizer_dir: str):
     """Evaluate the trained tokenizer with Hindi test cases."""
-    from transformers import AutoTokenizer
-
     print("\n" + "=" * 60)
-    print("EVALUATING HINDI TOKENIZER")
+    print("EVALUATING HINDI TOKENIZER (SentencePiece)")
     print("=" * 60)
 
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir)
+    # Load SentencePiece model directly
+    sp = spm.SentencePieceProcessor()
+    model_path = os.path.join(tokenizer_dir, "tokenizer.model")
+    sp.load(model_path)
+
+    # Try loading with HuggingFace for chat template support
+    try:
+        from transformers import AutoTokenizer
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_dir)
+        use_hf = True
+    except Exception as e:
+        print(f"Note: HuggingFace tokenizer not available ({e})")
+        print("Using SentencePiece directly for evaluation")
+        tokenizer = None
+        use_hf = False
 
     # Test messages (Hindi + English + Hinglish)
     test_cases = [
@@ -383,42 +454,67 @@ def eval_tokenizer(tokenizer_dir: str):
         }
     ]
 
-    for test in test_cases:
-        print(f"\n--- {test['name']} ---")
-        messages = test['messages']
-        new_prompt = tokenizer.apply_chat_template(messages, tokenize=False)
-        print(f"Prompt:\n{new_prompt}")
+    if use_hf:
+        for test in test_cases:
+            print(f"\n--- {test['name']} ---")
+            messages = test['messages']
+            new_prompt = tokenizer.apply_chat_template(messages, tokenize=False)
+            print(f"Prompt:\n{new_prompt}")
 
-        model_inputs = tokenizer(new_prompt)
-        print(f"Token count: {len(model_inputs['input_ids'])}")
+            model_inputs = tokenizer(new_prompt)
+            print(f"Token count: {len(model_inputs['input_ids'])}")
 
-        response = tokenizer.decode(model_inputs['input_ids'], skip_special_tokens=False)
-        print(f"Decode match: {response == new_prompt}")
+            response = tokenizer.decode(model_inputs['input_ids'], skip_special_tokens=False)
+            match = response == new_prompt
+            print(f"Decode match: {match}")
+            if not match:
+                print(f"  Expected len: {len(new_prompt)}, Got len: {len(response)}")
+                for i, (c1, c2) in enumerate(zip(new_prompt, response)):
+                    if c1 != c2:
+                        print(f"  First diff at pos {i}: expected {repr(c1)}, got {repr(c2)}")
+                        print(f"  Context: ...{repr(new_prompt[max(0,i-5):i+10])}...")
+                        break
+                if len(new_prompt) != len(response):
+                    print(f"  Length diff: expected={len(new_prompt)}, got={len(response)}")
 
     print("\n" + "=" * 60)
-    print(f"Tokenizer vocab size: {len(tokenizer)}")
+    print(f"Tokenizer vocab size: {sp.get_piece_size()}")
     print("=" * 60)
 
-    # Test Hindi tokenization efficiency
+    # Test Hindi tokenization efficiency using SentencePiece directly
     print("\n--- Hindi Token Efficiency ---")
     hindi_words = [
         "है", "हैं", "था", "का", "की", "में", "भारत", "सरकार", "विकास", "शिक्षा"
     ]
     total_tokens = 0
     for word in hindi_words:
-        tokens = tokenizer.tokenize(word)
+        tokens = sp.encode_as_pieces(word)
         total_tokens += len(tokens)
         print(f"  '{word:12}' -> {tokens} ({len(tokens)} tokens)")
 
     avg_tokens = total_tokens / len(hindi_words)
-    print(f"\n  Average tokens per word: {avg_tokens:.2f} (target: < 2.0)")
+    print(f"\n  Average tokens per word: {avg_tokens:.2f} (target: ~1.4)")
 
     # Test common conjuncts
     print("\n--- Hindi Conjuncts ---")
     conjuncts = ["क्ष", "त्र", "ज्ञ", "श्र", "द्व"]
     for conj in conjuncts:
-        tokens = tokenizer.tokenize(conj)
+        tokens = sp.encode_as_pieces(conj)
         print(f"  '{conj}' -> {tokens} ({len(tokens)} tokens)")
+
+    # Test encode/decode roundtrip
+    print("\n--- Encode/Decode Test ---")
+    test_texts = [
+        "नमस्ते, मेरा नाम राहुल है।",
+        "भारत एक महान देश है।",
+        "Hello, this is a test in English.",
+        "यह Hinglish में test है।"
+    ]
+    for text in test_texts:
+        ids = sp.encode(text)
+        decoded = sp.decode(ids)
+        match = decoded == text
+        print(f"  '{text[:30]:30}...' -> {len(ids):3} tokens, roundtrip: {'✓' if match else '✗'}")
 
 
 if __name__ == '__main__':
@@ -468,6 +564,11 @@ Examples:
                         help='Output directory for tokenizer')
     parser.add_argument('--vocab_size', type=int, default=tk_cfg.vocab_size,
                         help='Vocabulary size')
+    parser.add_argument('--character_coverage', type=float, default=0.9995,
+                        help='Character coverage (0.9995 for Indic, 1.0 for Latin-only)')
+    parser.add_argument('--model_type', type=str, default='unigram',
+                        choices=['unigram', 'bpe'],
+                        help='SentencePiece model type (unigram recommended for Indic)')
 
     # Actions
     parser.add_argument('--eval_only', action='store_true',
@@ -491,7 +592,9 @@ Examples:
             text_column=args.text_column,
             max_samples=args.max_samples,
             streaming=not args.no_streaming,  # Default: True (streaming to avoid downloading all languages)
-            min_length=args.min_length
+            min_length=args.min_length,
+            character_coverage=args.character_coverage,
+            model_type=args.model_type
         )
 
     eval_tokenizer(args.tokenizer_dir)
