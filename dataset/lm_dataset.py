@@ -1,8 +1,94 @@
-from torch.utils.data import Dataset
+from torch.utils.data import Dataset, IterableDataset
 import torch
 import os
+import unicodedata
 from datasets import load_dataset
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
+
+
+class HuggingFacePretrainDataset(IterableDataset):
+    """
+    Streaming dataset for pretraining on HuggingFace datasets.
+    Supports large datasets like ai4bharat/sangraha without downloading entire dataset.
+    """
+    def __init__(
+        self,
+        dataset_name: str,
+        tokenizer,
+        max_length: int = 512,
+        subset: str = None,
+        split: str = "train",
+        text_column: str = "text",
+        max_samples: int = None,
+        min_length: int = 50,
+        streaming: bool = True,
+        max_retries: int = 5
+    ):
+        super().__init__()
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+        self.text_column = text_column
+        self.max_samples = max_samples
+        self.min_length = min_length
+
+        # Load dataset with retry logic
+        import time as time_module
+        self.dataset = None
+        for attempt in range(max_retries):
+            try:
+                self.dataset = load_dataset(
+                    dataset_name,
+                    subset,
+                    split=split,
+                    streaming=streaming,
+                    trust_remote_code=True
+                )
+                break
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    wait_time = (attempt + 1) * 10
+                    print(f"  Connection failed (attempt {attempt + 1}/{max_retries}): {e}")
+                    print(f"  Retrying in {wait_time} seconds...")
+                    time_module.sleep(wait_time)
+                else:
+                    print(f"  Failed after {max_retries} attempts.")
+                    raise
+
+        if self.dataset is None:
+            raise RuntimeError("Failed to load dataset")
+
+    def __iter__(self):
+        count = 0
+        for item in self.dataset:
+            text = item.get(self.text_column, "")
+
+            if not text or len(text) < self.min_length:
+                continue
+
+            # Normalize Unicode (important for Devanagari)
+            text = unicodedata.normalize('NFC', text.strip())
+
+            # Tokenize
+            encoding = self.tokenizer(
+                text,
+                max_length=self.max_length,
+                padding='max_length',
+                truncation=True,
+                return_tensors='pt'
+            )
+            input_ids = encoding.input_ids.squeeze()
+            loss_mask = (input_ids != self.tokenizer.pad_token_id)
+
+            X = input_ids[:-1].clone()
+            Y = input_ids[1:].clone()
+            loss_mask = loss_mask[1:].clone()
+
+            yield X, Y, loss_mask
+
+            count += 1
+            if self.max_samples and count >= self.max_samples:
+                break
+
 
 class PretrainDataset(Dataset):
     def __init__(self, data_path, tokenizer, max_length=512):
