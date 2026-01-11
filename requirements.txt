@@ -29,3 +29,7 @@ einops==0.8.1
 swanlab==0.6.8
 torch==2.6.0
 torchvision==0.21.0
+
+# Hindi/Indic NLP
+sentencepiece==0.2.0
+indic-nlp-library==0.92

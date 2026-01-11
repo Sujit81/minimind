@@ -66,6 +66,9 @@ class HindiTokenizerConfig:
     # Training data
     max_training_samples: Optional[int] = 500000  # Samples for tokenizer training
 
+    # Chat template settings
+    default_system_message: str = "आप एक मददगार AI सहायक हैं। You are a helpful assistant."
+
 
 @dataclass
 class HindiModelConfig:

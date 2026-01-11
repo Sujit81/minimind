@@ -1,0 +1,22 @@
+--- Indic Normalization Test ---
+
+Original:   करूँगा
+Normalized: करूँगा
+Tokens:     ['करूँगा']
+Chars:      ['क', 'र', 'ू', 'ँ', 'ग', 'ा']
+
+Original:   शिक्षा
+Normalized: शिक्षा
+Tokens:     ['शिक्षा']
+Chars:      ['श', 'ि', 'क', '्', 'ष', 'ा']
+
+Original:   क्षत्रिय
+Normalized: क्षत्रिय
+Tokens:     ['क्षत्रिय']
+Chars:      ['क', '्', 'ष', 'त', '्', 'र', 'ि', 'य']
+
+Original:   ज्ञान
+Normalized: ज्ञान
+Tokens:     ['ज्ञान']
+Chars:      ['ज', '्', 'ञ', 'ा', 'न']
+

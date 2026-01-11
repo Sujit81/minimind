@@ -13,7 +13,6 @@ import os
 import sys
 import json
 import unicodedata
-import tempfile
 from typing import Iterator, Optional
 
 # Add parent directory to path
@@ -222,7 +221,7 @@ def train_tokenizer(
         max_samples: Maximum samples for training
         streaming: Use streaming mode
         min_length: Minimum text length
-        character_coverage: Character coverage (0.9995 for Indic, 1.0 for Latin)
+        character_coverage: Character coverage (0.9995 recommended for Hindi-dominant bilingual)
         model_type: SentencePiece model type ("unigram" or "bpe")
     """
     print("=" * 60)
@@ -254,12 +253,28 @@ def train_tokenizer(
         min_length=min_length
     )
 
+    # Initialize Indic normalizer for Hindi
+    try:
+        from indicnlp.normalize.indic_normalize import IndicNormalizerFactory
+        normalizer_factory = IndicNormalizerFactory()
+        indic_normalizer = normalizer_factory.get_normalizer('hi')
+        use_indic_norm = True
+        print("  Using Indic NLP normalizer for Hindi")
+    except ImportError:
+        indic_normalizer = None
+        use_indic_norm = False
+        print("  Note: indic-nlp-library not available, using basic normalization")
+
     # Write texts to file for SentencePiece
+    # Note: SentencePiece applies NFKC normalization internally (normalization_rule_name="nfkc")
+    # We only apply Indic-specific normalization here if available
     count = 0
     with open(corpus_file, 'w', encoding='utf-8') as f:
         for text in texts:
-            # Normalize and clean text
-            text = unicodedata.normalize('NFC', text.strip())
+            text = text.strip()
+            # Apply Indic-specific normalization (handles Devanagari quirks)
+            if use_indic_norm:
+                text = indic_normalizer.normalize(text)
             # Write each line
             for line in text.split('\n'):
                 line = line.strip()
@@ -271,10 +286,210 @@ def train_tokenizer(
 
     print(f"✓ Corpus prepared: {count:,} lines")
 
-    # Define special tokens (MiniMind format)
-    # SentencePiece reserves: 0=<unk>, 1=<s>, 2=</s>
-    # We'll use user_defined_symbols for our special tokens
-    special_tokens = ["<|endoftext|>", "<|im_start|>", "<|im_end|>"]
+    # Validate corpus before training
+    if count == 0:
+        raise RuntimeError("No valid training data found in corpus. Check data source and filters.")
+    if count < 10000:
+        print(f"  ⚠ Warning: Only {count:,} lines. Recommend at least 100,000 for good tokenization.")
+
+    # Common Hindi conjuncts and morphological units to protect from splitting
+    # These will be added as user_defined_symbols to prevent breaking
+    hindi_protected_symbols = [
+        # ═══════════════════════════════════════════════════════════════
+        # CONJUNCTS (संयुक्त अक्षर) - Must never be split
+        # ═══════════════════════════════════════════════════════════════
+        # क-series
+        "क्क", "क्ख", "क्त", "क्र", "क्ल", "क्व", "क्ष",
+        # ख-series
+        "ख्य",
+        # ग-series
+        "ग्ग", "ग्द", "ग्ध", "ग्न", "ग्म", "ग्य", "ग्र", "ग्ल", "ग्व",
+        # घ-series
+        "घ्न", "घ्र",
+        # च-series
+        "च्च", "च्छ", "च्य",
+        # ज-series
+        "ज्ज", "ज्ञ", "ज्य", "ज्र", "ज्व",
+        # ट-series
+        "ट्ट", "ट्य",
+        # ड-series
+        "ड्ड", "ड्य",
+        # ण-series
+        "ण्ट", "ण्ठ", "ण्ड", "ण्ढ", "ण्य",
+        # त-series
+        "त्त", "त्थ", "त्न", "त्म", "त्य", "त्र", "त्व", "त्स",
+        # थ-series
+        "थ्य",
+        # द-series
+        "द्ग", "द्घ", "द्द", "द्ध", "द्न", "द्ब", "द्भ", "द्म", "द्य", "द्र", "द्व",
+        # ध-series
+        "ध्न", "ध्य", "ध्र", "ध्व",
+        # न-series
+        "न्त", "न्थ", "न्द", "न्ध", "न्न", "न्म", "न्य", "न्र", "न्व", "न्ह",
+        # प-series
+        "प्त", "प्न", "प्प", "प्य", "प्र", "प्ल", "प्स",
+        # ब-series
+        "ब्ज", "ब्द", "ब्ध", "ब्ब", "ब्य", "ब्र", "ब्व",
+        # भ-series
+        "भ्य", "भ्र",
+        # म-series
+        "म्न", "म्प", "म्ब", "म्भ", "म्म", "म्य", "म्र", "म्ल", "म्व",
+        # य-series
+        "य्य",
+        # र-series (special - र् combines differently)
+        # ल-series
+        "ल्क", "ल्प", "ल्ल", "ल्य", "ल्व",
+        # व-series
+        "व्य", "व्र",
+        # श-series
+        "श्च", "श्न", "श्म", "श्य", "श्र", "श्ल", "श्व",
+        # ष-series
+        "ष्क", "ष्ट", "ष्ठ", "ष्ण", "ष्प", "ष्म", "ष्य", "ष्व",
+        # स-series
+        "स्क", "स्ख", "स्त", "स्थ", "स्न", "स्प", "स्फ", "स्म", "स्य", "स्र", "स्व",
+        # ह-series
+        "ह्न", "ह्म", "ह्य", "ह्र", "ह्ल", "ह्व",
+
+        # ═══════════════════════════════════════════════════════════════
+        # VERB MORPHOLOGY (क्रिया रूप)
+        # ═══════════════════════════════════════════════════════════════
+        # Infinitive (मूल रूप)
+        "ना", "नी", "ने",
+        # Present tense (वर्तमान काल)
+        "ता", "ती", "ते",
+        "ता है", "ती है", "ते हैं",
+        "रहा", "रही", "रहे",
+        # Past tense (भूतकाल)
+        "या", "यी", "ये",
+        "गया", "गयी", "गये", "गए",
+        "था", "थी", "थे",
+        "चुका", "चुकी", "चुके",
+        # Future tense (भविष्य काल)
+        "गा", "गी", "गे",
+        "ूँगा", "ूँगी", "ेंगे", "ेंगी",
+        "ऊँगा", "ऊँगी", "ओगे", "ओगी",
+        "ाऊँगा", "ाऊँगी", "ाओगे", "ाओगी",
+        "ाएगा", "ाएगी", "ाएँगे", "ाएँगी",
+        # Imperative (आज्ञार्थ)
+        "ो", "ओ", "इए", "िए", "ीजिए",
+        # Subjunctive (संभावनार्थ)
+        "ूँ", "ें", "े",
+        # Conditional
+        "ता तो", "ती तो", "ते तो",
+        # Compound verb helpers
+        "कर", "करके", "करना", "करता", "करती", "करते",
+        "जा", "जाना", "जाता", "जाती", "जाते",
+        "ले", "लेना", "लेता", "लेती", "लेते",
+        "दे", "देना", "देता", "देती", "देते",
+        "रख", "रखना", "रखता", "रखती", "रखते",
+        "डाल", "डालना", "डालता", "डालती", "डालते",
+        "पड़", "पड़ना", "पड़ता", "पड़ती", "पड़ते",
+        "सक", "सकता", "सकती", "सकते",
+        "चाह", "चाहना", "चाहता", "चाहती", "चाहते", "चाहिए",
+        "पा", "पाना", "पाता", "पाती", "पाते",
+        "हो", "होना", "होता", "होती", "होते", "होगा", "होगी", "होंगे",
+        # Stative/Aspectual completers (review addition)
+        "पड़ा", "पड़ी", "पड़े", "बैठा", "बैठी", "बैठे", "उठा", "उठी", "उठे",
+        "हुआ", "हुई", "हुए", "लगा", "लगी", "लगे",
+
+        # ═══════════════════════════════════════════════════════════════
+        # NOUN MORPHOLOGY (संज्ञा रूप)
+        # ═══════════════════════════════════════════════════════════════
+        # Case markers (कारक चिह्न) / Postpositions
+        "का", "की", "के",
+        "को", "से", "में", "पर", "तक", "द्वारा",
+        "के लिए", "की ओर", "के साथ", "के बारे", "के बाद", "से पहले",
+        "के अंदर", "के बाहर", "के ऊपर", "के नीचे", "के बीच",
+        # Additional compound postpositions (review addition)
+        "के माध्यम", "की वजह", "के कारण", "की तरफ", "के प्रति",
+        # Plural markers (2+ chars only, single matras learned naturally)
+        "याँ", "ियाँ", "ियों",
+        # Gender/Number suffixes - removed single matras (ा, ी, े, ीं)
+        # Note: Single matras interfere with natural tokenization
+        # Abstract noun suffixes (2+ chars only)
+        "ता", "त्व", "पन", "पना", "आई", "ाई", "ाव", "ावट", "ाहट",
+        "गी", "री", "इया",
+        # Additional productive suffixes (review addition)
+        "इका", "ईका", "ईया", "ाना", "ाने", "ानी",
+        "आलू", "ईला", "ईली",
+        # Agent/Doer suffixes
+        "वाला", "वाली", "वाले",
+        "कार", "कारी", "दार", "दारी",
+        "इया", "इए",
+        # Adverb-forming suffixes (review addition)
+        "पूर्वक", "वार", "भर", "मात्र",
+        # Diminutive
+        "ड़ा", "ड़ी",
+
+        # ═══════════════════════════════════════════════════════════════
+        # ADJECTIVE MORPHOLOGY (विशेषण रूप)
+        # ═══════════════════════════════════════════════════════════════
+        # Comparative/Superlative
+        "तर", "तम", "तरीन",
+        "सबसे", "बहुत", "काफी", "थोड़ा",
+        # Common adjective endings
+        "ीय", "िक", "मय", "पूर्ण", "हीन", "युक्त", "रहित",
+        "शील", "मान", "वान", "वती",
+
+        # ═══════════════════════════════════════════════════════════════
+        # PRONOUNS AND COMMON WORDS (सर्वनाम और सामान्य शब्द)
+        # ═══════════════════════════════════════════════════════════════
+        "मैं", "मुझ", "मेरा", "मेरी", "मेरे",
+        "तू", "तुझ", "तेरा", "तेरी", "तेरे",
+        "तुम", "तुम्हें", "तुम्हारा", "तुम्हारी", "तुम्हारे",
+        "आप", "आपको", "आपका", "आपकी", "आपके",
+        "यह", "इस", "इसका", "इसकी", "इसके", "इसे", "इसमें",
+        "वह", "उस", "उसका", "उसकी", "उसके", "उसे", "उसमें",
+        "ये", "इन", "इनका", "इनकी", "इनके", "इन्हें",
+        "वे", "उन", "उनका", "उनकी", "उनके", "उन्हें",
+        "कौन", "क्या", "कहाँ", "कब", "कैसे", "क्यों", "कितना", "कितनी", "कितने",
+        "जो", "जिस", "जिसका", "जिसकी", "जिसके", "जिसे", "जिसमें",
+        "हम", "हमें", "हमारा", "हमारी", "हमारे",
+        "अपना", "अपनी", "अपने", "खुद",
+
+        # ═══════════════════════════════════════════════════════════════
+        # COMMON PREFIXES (उपसर्ग) - Only 2+ char prefixes
+        # Note: Single char prefixes (अ, आ, उ) omitted - learned naturally
+        # ═══════════════════════════════════════════════════════════════
+        "अन", "अध", "अधि", "अनु", "अप", "अभि", "अव",
+        "उप", "उत", "दु", "दुर", "दुस",
+        "नि", "निर", "निस", "पर", "परा", "परि", "प्र", "प्रति",
+        "वि", "सं", "सम", "सु", "स्व",
+
+        # ═══════════════════════════════════════════════════════════════
+        # NUMBERS (संख्याएँ)
+        # ═══════════════════════════════════════════════════════════════
+        "एक", "दो", "तीन", "चार", "पाँच", "छह", "सात", "आठ", "नौ", "दस",
+        "ग्यारह", "बारह", "तेरह", "चौदह", "पंद्रह", "सोलह", "सत्रह", "अठारह", "उन्नीस", "बीस",
+        "सौ", "हज़ार", "लाख", "करोड़", "अरब",
+        "पहला", "दूसरा", "तीसरा", "चौथा", "पाँचवाँ",
+        "पहली", "दूसरी", "तीसरी", "चौथी", "पाँचवीं",
+
+        # ═══════════════════════════════════════════════════════════════
+        # CONNECTORS AND PARTICLES (संयोजक और अव्यय)
+        # ═══════════════════════════════════════════════════════════════
+        "और", "या", "एवं", "तथा", "अथवा",
+        "लेकिन", "परंतु", "किंतु", "मगर", "पर",
+        "क्योंकि", "इसलिए", "अतः", "अतएव",
+        "कि", "जो", "जब", "तब", "यदि", "अगर", "तो", "फिर",
+        "भी", "ही", "तो", "न", "ना", "नहीं", "मत",
+        "शायद", "जरूर", "अवश्य", "केवल", "सिर्फ", "बस",
+
+        # ═══════════════════════════════════════════════════════════════
+        # HONORIFICS AND TITLES (सम्मान सूचक)
+        # ═══════════════════════════════════════════════════════════════
+        "जी", "साहब", "साहिब", "श्री", "श्रीमती", "कुमारी", "डॉ", "प्रो",
+    ]
+
+    # Remove duplicates and very short symbols (single char matras)
+    # Single characters can interfere with natural subword formation
+    hindi_protected_symbols = list(set(
+        s for s in hindi_protected_symbols
+        if len(s) >= 2 or s in ["का", "की", "के", "को", "से", "में", "पर"]  # Keep essential 2-char postpositions
+    ))
+    hindi_protected_symbols.sort()  # Sort for reproducibility
+
+    print(f"  Protected symbols: {len(hindi_protected_symbols)} morphological units (deduplicated)")
 
     # Train SentencePiece
     print("\nTraining SentencePiece tokenizer...")
@@ -296,6 +511,8 @@ def train_tokenizer(
         unk_piece="<|endoftext|>",
         bos_piece="<|im_start|>",
         eos_piece="<|im_end|>",
+        # Protect Hindi conjuncts and common syllables
+        user_defined_symbols=hindi_protected_symbols,
         # Training settings
         split_digits=True,
         byte_fallback=True,  # Handle unknown characters via bytes
@@ -329,10 +546,12 @@ def train_tokenizer(
         print(f"✓ Cleaned up temporary corpus file")
 
     # Create tokenizer config with chat template
+    # Use default system message from config
+    default_sys_msg = DEFAULT_TOKENIZER_CONFIG.default_system_message
     chat_template = """{%- if messages[0]['role'] == 'system' -%}
     {{- '<|im_start|>system\\n' + messages[0]['content'] + '<|im_end|>\\n' }}
 {%- else -%}
-    {{- '<|im_start|>system\\nआप एक मददगार AI सहायक हैं। You are a helpful assistant.<|im_end|>\\n' }}
+    {{- '<|im_start|>system\\n""" + default_sys_msg + """<|im_end|>\\n' }}
 {%- endif %}
 {%- for message in messages %}
     {%- if message['role'] == 'user' %}
@@ -391,11 +610,6 @@ def train_tokenizer(
 
     with open(os.path.join(tokenizer_dir, "tokenizer_config.json"), "w", encoding="utf-8") as f:
         json.dump(config, f, ensure_ascii=False, indent=4)
-
-    # Rename model files to match expected names for LlamaTokenizer
-    import shutil
-    sp_model_src = os.path.join(tokenizer_dir, "tokenizer.model")
-    sp_model_dst = os.path.join(tokenizer_dir, "tokenizer.model")  # Keep same name
 
     print(f"✓ Config saved to {tokenizer_dir}/tokenizer_config.json")
     print("\n" + "=" * 60)
