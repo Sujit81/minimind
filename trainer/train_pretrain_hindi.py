@@ -45,6 +45,8 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None, is_streaming=Fal
     step = start_step
     for batch in loader:
         step += 1
+        if step == 1:
+            Logger(f"First batch loaded successfully!")
         X, Y, loss_mask = batch
         X = X.to(args.device)
         Y = Y.to(args.device)
@@ -239,6 +241,11 @@ Examples:
     if args.show_config:
         print_config()
         sys.exit(0)
+
+    # Auto-fix num_workers on Windows (multiprocessing issues)
+    if sys.platform == 'win32' and args.num_workers > 0:
+        print(f"Windows detected: Setting num_workers=0 (was {args.num_workers})")
+        args.num_workers = 0
 
     # ========== 1. Initialize environment and seed ==========
     Logger("=" * 60)

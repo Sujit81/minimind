@@ -34,3 +34,4 @@ checkpoints_hindi/
 .ipynb_checkpoints/
 config/__pycache__/hindi_config.cpython-312.pyc
 model_hindi/corpus_temp.txt
+dataset/hindi/sangraha_hindi.jsonl

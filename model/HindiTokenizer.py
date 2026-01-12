@@ -222,6 +222,13 @@ class HindiTokenizer:
 
         return ids
 
+    # Special token mappings (must match tokenizer training config)
+    SPECIAL_TOKEN_MAP = {
+        0: "<|endoftext|>",  # PAD/UNK
+        1: "<|im_start|>",   # BOS
+        2: "<|im_end|>",     # EOS
+    }
+
     def decode(
         self,
         token_ids: Union[List[int], Any],
@@ -245,9 +252,30 @@ class HindiTokenizer:
 
         if skip_special_tokens:
             # Remove special tokens (0=PAD, 1=BOS, 2=EOS)
-            token_ids = [t for t in token_ids if t not in [0, 1, 2]]
+            token_ids = [t for t in token_ids if t not in self.SPECIAL_TOKEN_MAP]
+            return self.sp.decode(token_ids)
 
-        return self.sp.decode(token_ids)
+        # When not skipping special tokens, we need to decode in segments
+        # because SentencePiece doesn't know our custom special token strings
+        result = []
+        regular_ids = []
+
+        for tid in token_ids:
+            if tid in self.SPECIAL_TOKEN_MAP:
+                # Decode accumulated regular tokens first
+                if regular_ids:
+                    result.append(self.sp.decode(regular_ids))
+                    regular_ids = []
+                # Add the special token string
+                result.append(self.SPECIAL_TOKEN_MAP[tid])
+            else:
+                regular_ids.append(tid)
+
+        # Decode any remaining regular tokens
+        if regular_ids:
+            result.append(self.sp.decode(regular_ids))
+
+        return ''.join(result)
 
     def tokenize(self, text: str) -> List[str]:
         """
@@ -261,6 +289,46 @@ class HindiTokenizer:
         """
         text = self.preprocess(text)
         return self.sp.encode_as_pieces(text)
+
+    # Reverse mapping for encoding special token strings
+    SPECIAL_TOKEN_STR_TO_ID = {
+        "<|endoftext|>": 0,
+        "<|im_start|>": 1,
+        "<|im_end|>": 2,
+    }
+
+    def _encode_with_special_tokens(self, text: str, preprocess: bool = False) -> List[int]:
+        """
+        Encode text that may contain special token strings.
+
+        This handles chat templates where <|im_start|> and <|im_end|>
+        appear as literal strings in the text.
+
+        Args:
+            text: Input text with special token strings
+            preprocess: Whether to apply preprocessing (set False if already preprocessed)
+        """
+        import re
+
+        # Pattern to match special tokens
+        special_pattern = re.compile(r'(<\|(?:endoftext|im_start|im_end)\|>)')
+
+        # Split text by special tokens, keeping the delimiters
+        parts = special_pattern.split(text)
+
+        ids = []
+        for part in parts:
+            if not part:
+                continue
+            if part in self.SPECIAL_TOKEN_STR_TO_ID:
+                ids.append(self.SPECIAL_TOKEN_STR_TO_ID[part])
+            else:
+                # Regular text - optionally preprocess and encode
+                if preprocess:
+                    part = self.preprocess(part)
+                ids.extend(self.sp.encode(part))
+
+        return ids
 
     def __call__(
         self,
@@ -292,16 +360,40 @@ class HindiTokenizer:
         # Preprocess and encode all texts
         all_ids = []
         for t in text:
-            t = self.preprocess(t)
-            ids = self.sp.encode(t)
-            if add_special_tokens:
-                ids = [1] + ids + [2]  # BOS + text + EOS
+            # Check if text contains special token strings (e.g., from chat template)
+            if '<|' in t and '|>' in t:
+                # Text with special tokens is likely from apply_chat_template,
+                # which already preprocessed the content. Don't preprocess again.
+                ids = self._encode_with_special_tokens(t, preprocess=False)
+                # Don't add BOS/EOS if text already contains special tokens
+            else:
+                t = self.preprocess(t)
+                ids = self.sp.encode(t)
+                if add_special_tokens:
+                    ids = [1] + ids + [2]  # BOS + text + EOS
             if truncation and max_length:
                 ids = ids[:max_length]
             all_ids.append(ids)
 
         # Padding
-        if padding and len(all_ids) > 1:
+        # Handle padding='max_length' (string) or padding=True
+        pad_to_max = (padding == 'max_length') or (isinstance(padding, str) and 'max' in padding.lower())
+        pad_to_longest = padding is True or padding == 'longest'
+
+        if pad_to_max and max_length:
+            # Pad all sequences to max_length
+            target_len = max_length
+            attention_mask = []
+            for i, ids in enumerate(all_ids):
+                mask = [1] * len(ids)
+                if len(ids) < target_len:
+                    pad_len = target_len - len(ids)
+                    ids.extend([0] * pad_len)  # PAD token = 0
+                    mask.extend([0] * pad_len)
+                all_ids[i] = ids
+                attention_mask.append(mask)
+        elif pad_to_longest and len(all_ids) > 1:
+            # Pad to longest in batch
             max_len = max(len(ids) for ids in all_ids)
             if max_length:
                 max_len = min(max_len, max_length)
@@ -369,19 +461,26 @@ class HindiTokenizer:
         # Manual chat template (matches training config)
         default_system = "आप एक सहायक AI हैं।"
 
+        # Make a copy to avoid modifying the original
+        messages = list(messages)
+
         parts = []
 
         # System message
         if messages and messages[0]['role'] == 'system':
-            parts.append(f"<|im_start|>system\n{messages[0]['content']}<|im_end|>\n")
+            # Preprocess content for consistent roundtrip
+            content = self.preprocess(messages[0]['content'])
+            parts.append(f"<|im_start|>system\n{content}<|im_end|>\n")
             messages = messages[1:]
         else:
-            parts.append(f"<|im_start|>system\n{default_system}<|im_end|>\n")
+            content = self.preprocess(default_system)
+            parts.append(f"<|im_start|>system\n{content}<|im_end|>\n")
 
         # Conversation
         for msg in messages:
             role = msg['role']
-            content = msg['content']
+            # Preprocess content for consistent roundtrip
+            content = self.preprocess(msg['content'])
             parts.append(f"<|im_start|>{role}\n{content}<|im_end|>\n")
 
         # Generation prompt
@@ -391,7 +490,8 @@ class HindiTokenizer:
         text = ''.join(parts)
 
         if tokenize:
-            return self.encode(text, add_special_tokens=False)
+            # Already preprocessed, don't preprocess again
+            return self._encode_with_special_tokens(text, preprocess=False)
         return text
 
     @property
@@ -426,6 +526,46 @@ class HindiTokenizer:
     @property
     def unk_token(self) -> str:
         return "<|endoftext|>"
+
+    def convert_tokens_to_ids(self, token: Union[str, List[str]]) -> Union[int, List[int]]:
+        """
+        Convert token(s) to ID(s).
+
+        Args:
+            token: Single token string or list of tokens
+
+        Returns:
+            Token ID or list of IDs
+        """
+        if isinstance(token, list):
+            return [self.convert_tokens_to_ids(t) for t in token]
+
+        # Check special tokens first
+        if token in self.SPECIAL_TOKEN_STR_TO_ID:
+            return self.SPECIAL_TOKEN_STR_TO_ID[token]
+
+        # Use SentencePiece for regular tokens
+        return self.sp.piece_to_id(token)
+
+    def convert_ids_to_tokens(self, ids: Union[int, List[int]]) -> Union[str, List[str]]:
+        """
+        Convert ID(s) to token(s).
+
+        Args:
+            ids: Single ID or list of IDs
+
+        Returns:
+            Token string or list of tokens
+        """
+        if isinstance(ids, list):
+            return [self.convert_ids_to_tokens(i) for i in ids]
+
+        # Check special tokens first
+        if ids in self.SPECIAL_TOKEN_MAP:
+            return self.SPECIAL_TOKEN_MAP[ids]
+
+        # Use SentencePiece for regular tokens
+        return self.sp.id_to_piece(ids)
 
     @classmethod
     def from_pretrained(

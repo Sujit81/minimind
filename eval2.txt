@@ -1210,14 +1210,14 @@ Testing: Connectors (संयोजक)
 ──────────────────────────────────────────────────────────────────────
 Testing: Chat Template
 ──────────────────────────────────────────────────────────────────────
-  ✗ Chat: Pure Hindi Conversation
+  ✓ Chat: Pure Hindi Conversation
+      Token count: 55
+  ✓ Chat: Hinglish Conversation
       Token count: 103
-  ✗ Chat: Hinglish Conversation
-      Token count: 151
   ✗ Chat: Multi-turn Hindi
-      Token count: 188
+      Token count: 110
 
-  Category Result: 0/3 passed (0.0%)
+  Category Result: 2/3 passed (66.7%)
 
 ──────────────────────────────────────────────────────────────────────
 Testing: Edge Cases
@@ -1301,9 +1301,9 @@ Token Efficiency Metrics
 EVALUATION SUMMARY
 ======================================================================
 Total Tests: 420
-Passed: 385
-Failed: 35
-Pass Rate: 91.7%
+Passed: 387
+Failed: 33
+Pass Rate: 92.1%
 ======================================================================
 
 Category Breakdown:
@@ -1315,6 +1315,6 @@ Category Breakdown:
   ⚠ Numbers (संख्याएँ): 44/53 (83.0%)
   ⚠ Prefixes/Suffixes (उपसर्ग/प्रत्यय): 83/88 (94.3%)
   ⚠ Connectors (संयोजक): 27/33 (81.8%)
-  ✗ Chat Template: 0/3 (0.0%)
+  ✗ Chat Template: 2/3 (66.7%)
   ✓ Edge Cases: 12/12 (100.0%)
   ✓ Roundtrip: 20/20 (100.0%)
