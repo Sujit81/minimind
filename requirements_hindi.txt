@@ -1,0 +1,19 @@
+# Minimal requirements for Hindi MiniMind training
+# For Colab: pip install -r requirements_hindi.txt
+
+# Core (no version pin for CUDA compatibility)
+torch
+numpy
+
+# Transformers & Data
+transformers>=4.40.0
+datasets>=2.18.0
+sentencepiece>=0.2.0
+
+# Hindi NLP
+indic-nlp-library>=0.92
+
+# Optional (uncomment if needed)
+# wandb
+# swanlab
+# peft
