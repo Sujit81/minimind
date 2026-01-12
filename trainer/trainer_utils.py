@@ -33,7 +33,9 @@ def is_main_process():
 
 def Logger(content):
     if is_main_process():
-        print(content)
+        from datetime import datetime
+        timestamp = datetime.now().strftime("%H:%M:%S")
+        print(f"[{timestamp}] {content}")
 
 
 def get_lr(current_step, total_steps, lr):
