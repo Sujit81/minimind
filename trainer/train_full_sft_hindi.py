@@ -127,7 +127,8 @@ if __name__ == "__main__":
     parser.add_argument('--max_seq_len', default=1024, type=int, help="Training sequence length")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="Use MoE architecture")
     parser.add_argument("--data_path", type=str, default="./dataset/hindi/sft_hindi.jsonl", help="SFT data path (local JSONL or HuggingFace dataset)")
-    parser.add_argument("--hf_dataset", type=str, default=None, help="HuggingFace dataset name (e.g., ai4bharat/indic-instruct)")
+    parser.add_argument("--hf_dataset", type=str, default=None, help="HuggingFace dataset name (e.g., BhabhaAI/indic-instruct-data-v0.2-filtered)")
+    parser.add_argument("--hf_subset", type=str, default=None, help="HuggingFace dataset config/subset (e.g., anudesh)")
     parser.add_argument("--hf_split", type=str, default="hi", help="HuggingFace dataset split/language (e.g., hi for Hindi)")
     parser.add_argument('--from_weight', default='pretrain_hindi', type=str, help="Base checkpoint to fine-tune")
     parser.add_argument('--tokenizer_path', default='./model_hindi', type=str, help="Hindi tokenizer path")
@@ -217,12 +218,13 @@ if __name__ == "__main__":
     if args.hf_dataset:
         # Load from HuggingFace dataset
         from dataset.lm_dataset import HuggingFaceSFTDataset
-        Logger(f"Loading from HuggingFace: {args.hf_dataset} (split: {args.hf_split})")
+        Logger(f"Loading from HuggingFace: {args.hf_dataset} (subset: {args.hf_subset}, split: {args.hf_split})")
         train_ds = HuggingFaceSFTDataset(
             dataset_name=args.hf_dataset,
             tokenizer=tokenizer,
             max_length=args.max_seq_len,
-            split=args.hf_split
+            split=args.hf_split,
+            subset=args.hf_subset
         )
     else:
         # Load from local JSONL file
