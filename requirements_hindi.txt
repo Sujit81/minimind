@@ -2,7 +2,7 @@
 # For Colab: pip install -r requirements_hindi.txt
 
 # Core (no version pin for CUDA compatibility)
-#torch
+torch
 numpy
 
 # Transformers & Data
