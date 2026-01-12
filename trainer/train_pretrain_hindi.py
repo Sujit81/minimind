@@ -24,7 +24,7 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, DistributedSampler
 from model.model_minimind import MiniMindConfig, MiniMindForCausalLM
 from dataset.lm_dataset import PretrainDataset, HuggingFacePretrainDataset
-from trainer.trainer_utils import get_lr, Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler
+from trainer.trainer_utils import get_lr, get_lr_with_warmup, Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler
 
 # Import configuration
 from config.hindi_config import (
@@ -37,10 +37,11 @@ from config.hindi_config import (
 warnings.filterwarnings('ignore')
 
 
-def train_epoch(epoch, loader, iters, start_step=0, wandb=None, is_streaming=False):
+def train_epoch(epoch, loader, iters, start_step=0, wandb=None, is_streaming=False, warmup_steps=0, min_lr_ratio=0.1):
     """Training loop for one epoch."""
     loss_fct = nn.CrossEntropyLoss(reduction='none')
     start_time = time.time()
+    total_steps = args.epochs * iters
 
     step = start_step
     for batch in loader:
@@ -52,8 +53,9 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None, is_streaming=Fal
         Y = Y.to(args.device)
         loss_mask = loss_mask.to(args.device)
 
-        # Learning rate scheduling with cosine annealing
-        lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate)
+        # Learning rate scheduling with warmup and cosine decay
+        global_step = epoch * iters + step
+        lr = get_lr_with_warmup(global_step, total_steps, args.learning_rate, warmup_steps, min_lr_ratio)
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
@@ -212,6 +214,10 @@ Examples:
                         help="Gradient accumulation steps")
     parser.add_argument("--grad_clip", type=float, default=train_cfg.grad_clip,
                         help="Gradient clipping threshold")
+    parser.add_argument("--warmup_steps", type=int, default=0,
+                        help="Learning rate warmup steps (0=auto: 1%% of total steps)")
+    parser.add_argument("--min_lr_ratio", type=float, default=0.1,
+                        help="Minimum LR ratio (0.1=decay to 10%%, 0.2=decay to 20%%)")
     parser.add_argument("--dtype", type=str, default=train_cfg.dtype,
                         help="Mixed precision type (bfloat16 or float16)")
     parser.add_argument("--num_workers", type=int, default=train_cfg.num_workers,
@@ -377,7 +383,15 @@ Examples:
         model = DistributedDataParallel(model, device_ids=[local_rank])
 
     # ========== 8. Start training ==========
+    # Calculate warmup steps (auto: 1% of total steps)
+    total_training_steps = args.epochs * iters
+    if args.warmup_steps == 0:
+        warmup_steps = int(total_training_steps * 0.01)  # 1% warmup
+    else:
+        warmup_steps = args.warmup_steps
+
     Logger("Starting training...")
+    Logger(f"Total steps: {total_training_steps}, Warmup: {warmup_steps}, Min LR ratio: {args.min_lr_ratio}")
     model.train()
 
     for epoch in range(start_epoch, args.epochs):
@@ -388,9 +402,9 @@ Examples:
             batch_sampler = SkipBatchSampler(train_sampler or range(len(train_ds)), args.batch_size, start_step + 1)
             loader = DataLoader(train_ds, batch_sampler=batch_sampler, num_workers=args.num_workers, pin_memory=True)
             Logger(f'Epoch [{epoch + 1}/{args.epochs}]: Skipping first {start_step} steps')
-            train_epoch(epoch, loader, len(loader) + start_step + 1, start_step, wandb, is_streaming)
+            train_epoch(epoch, loader, len(loader) + start_step + 1, start_step, wandb, is_streaming, warmup_steps, args.min_lr_ratio)
         else:
-            train_epoch(epoch, loader, iters, 0, wandb, is_streaming)
+            train_epoch(epoch, loader, iters, 0, wandb, is_streaming, warmup_steps, args.min_lr_ratio)
 
     # ========== 9. Final save and cleanup ==========
     if is_main_process():

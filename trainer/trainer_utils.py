@@ -42,6 +42,29 @@ def get_lr(current_step, total_steps, lr):
     return lr*(0.1 + 0.45*(1 + math.cos(math.pi * current_step / total_steps)))
 
 
+def get_lr_with_warmup(current_step, total_steps, lr, warmup_steps=0, min_lr_ratio=0.1):
+    """
+    Learning rate scheduler with linear warmup and cosine decay.
+
+    For large-scale training (e.g., 5M+ samples):
+    - warmup_steps: 1-2% of total_steps (e.g., 2000 steps for 100k total)
+    - min_lr_ratio: 0.1 means LR decays to 10% of initial (default)
+                    0.2 means LR decays to 20% of initial (gentler)
+
+    Schedule:
+    1. Linear warmup: 0 -> lr over warmup_steps
+    2. Cosine decay: lr -> min_lr over remaining steps
+    """
+    if current_step < warmup_steps:
+        # Linear warmup
+        return lr * (current_step / warmup_steps)
+    else:
+        # Cosine decay after warmup
+        progress = (current_step - warmup_steps) / max(1, total_steps - warmup_steps)
+        cosine_decay = 0.5 * (1 + math.cos(math.pi * progress))
+        return lr * (min_lr_ratio + (1 - min_lr_ratio) * cosine_decay)
+
+
 def init_distributed_mode():
     if int(os.environ.get("RANK", -1)) == -1:
         return 0  # 非DDP模式

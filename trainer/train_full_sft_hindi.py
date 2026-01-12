@@ -18,23 +18,25 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.utils.data import DataLoader, DistributedSampler
 from model.model_minimind import MiniMindConfig, MiniMindForCausalLM
 from dataset.lm_dataset import SFTDataset
-from trainer.trainer_utils import get_lr, Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler, init_model
+from trainer.trainer_utils import get_lr, get_lr_with_warmup, Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler, init_model
 
 warnings.filterwarnings('ignore')
 
 
-def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
+def train_epoch(epoch, loader, iters, start_step=0, wandb=None, warmup_steps=0, min_lr_ratio=0.1):
     """Training loop for one epoch."""
     loss_fct = nn.CrossEntropyLoss(reduction='none')
     start_time = time.time()
+    total_steps = args.epochs * iters
 
     for step, (X, Y, loss_mask) in enumerate(loader, start=start_step + 1):
         X = X.to(args.device)
         Y = Y.to(args.device)
         loss_mask = loss_mask.to(args.device)
 
-        # Learning rate scheduling
-        lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate)
+        # Learning rate scheduling with warmup
+        global_step = epoch * iters + step
+        lr = get_lr_with_warmup(global_step, total_steps, args.learning_rate, warmup_steps, min_lr_ratio)
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
@@ -119,6 +121,8 @@ if __name__ == "__main__":
     parser.add_argument("--num_workers", type=int, default=8, help="Data loading threads")
     parser.add_argument("--accumulation_steps", type=int, default=1, help="Gradient accumulation steps")
     parser.add_argument("--grad_clip", type=float, default=1.0, help="Gradient clipping threshold")
+    parser.add_argument("--warmup_steps", type=int, default=0, help="LR warmup steps (0=auto: 2%% of total)")
+    parser.add_argument("--min_lr_ratio", type=float, default=0.1, help="Min LR ratio for decay")
     parser.add_argument("--log_interval", type=int, default=10, help="Logging interval")
     parser.add_argument("--save_interval", type=int, default=100, help="Model save interval")
     parser.add_argument('--hidden_size', default=512, type=int, help="Hidden dimension (Base model)")
@@ -252,7 +256,16 @@ if __name__ == "__main__":
         model = DistributedDataParallel(model, device_ids=[local_rank])
 
     # ========== 8. Start training ==========
+    # Calculate warmup steps (auto: 2% of total steps for SFT)
+    steps_per_epoch = len(train_ds) // args.batch_size
+    total_training_steps = args.epochs * steps_per_epoch
+    if args.warmup_steps == 0:
+        warmup_steps = int(total_training_steps * 0.02)  # 2% warmup for SFT
+    else:
+        warmup_steps = args.warmup_steps
+
     Logger("Starting SFT training...")
+    Logger(f"Total steps: {total_training_steps}, Warmup: {warmup_steps}, Min LR ratio: {args.min_lr_ratio}")
     model.train()
 
     for epoch in range(start_epoch, args.epochs):
@@ -262,11 +275,11 @@ if __name__ == "__main__":
             batch_sampler = SkipBatchSampler(train_sampler or range(len(train_ds)), args.batch_size, start_step + 1)
             loader = DataLoader(train_ds, batch_sampler=batch_sampler, num_workers=args.num_workers, pin_memory=True)
             Logger(f'Epoch [{epoch + 1}/{args.epochs}]: Skipping first {start_step} steps')
-            train_epoch(epoch, loader, len(loader) + start_step + 1, start_step, wandb)
+            train_epoch(epoch, loader, len(loader) + start_step + 1, start_step, wandb, warmup_steps, args.min_lr_ratio)
         else:
             loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=(train_sampler is None),
                              sampler=train_sampler, num_workers=args.num_workers, pin_memory=True)
-            train_epoch(epoch, loader, len(loader), 0, wandb)
+            train_epoch(epoch, loader, len(loader), 0, wandb, warmup_steps, args.min_lr_ratio)
 
     # ========== 9. Cleanup ==========
     if dist.is_initialized():
