@@ -120,6 +120,114 @@ class PretrainDataset(Dataset):
         return X, Y, loss_mask
 
 
+class HuggingFaceSFTDataset(Dataset):
+    """
+    SFT Dataset for HuggingFace instruction datasets.
+    Supports common formats: instruction/response, messages, prompt/completion.
+    """
+    def __init__(self, dataset_name, tokenizer, max_length=1024, split="train", subset=None):
+        super().__init__()
+        self.tokenizer = tokenizer
+        self.max_length = max_length
+
+        # Load dataset
+        if subset:
+            self.dataset = load_dataset(dataset_name, subset, split=split, trust_remote_code=True)
+        else:
+            self.dataset = load_dataset(dataset_name, split=split, trust_remote_code=True)
+
+        # Detect format and convert to conversations
+        self.samples = self._convert_to_conversations()
+
+        self.bos_id = tokenizer(f'{tokenizer.bos_token}assistant', add_special_tokens=False).input_ids
+        self.eos_id = tokenizer(f'{tokenizer.eos_token}', add_special_tokens=False).input_ids
+
+    def _convert_to_conversations(self):
+        """Convert various formats to unified conversations format."""
+        samples = []
+        for item in self.dataset:
+            conversations = []
+
+            # Format 1: messages (list of dicts with role/content)
+            if 'messages' in item:
+                conversations = item['messages']
+
+            # Format 2: conversations (already in correct format)
+            elif 'conversations' in item:
+                conversations = item['conversations']
+
+            # Format 3: instruction/input/output (Alpaca format)
+            elif 'instruction' in item:
+                if item.get('input'):
+                    user_content = f"{item['instruction']}\n{item['input']}"
+                else:
+                    user_content = item['instruction']
+                conversations = [
+                    {"role": "user", "content": user_content},
+                    {"role": "assistant", "content": item.get('output', item.get('response', ''))}
+                ]
+
+            # Format 4: prompt/completion
+            elif 'prompt' in item:
+                conversations = [
+                    {"role": "user", "content": item['prompt']},
+                    {"role": "assistant", "content": item.get('completion', item.get('response', ''))}
+                ]
+
+            # Format 5: question/answer
+            elif 'question' in item:
+                conversations = [
+                    {"role": "user", "content": item['question']},
+                    {"role": "assistant", "content": item.get('answer', '')}
+                ]
+
+            if conversations:
+                samples.append({'conversations': conversations})
+
+        return samples
+
+    def __len__(self):
+        return len(self.samples)
+
+    def create_chat_prompt(self, cs):
+        messages = cs.copy()
+        return self.tokenizer.apply_chat_template(
+            messages,
+            tokenize=False,
+            add_generation_prompt=False
+        )
+
+    def generate_loss_mask(self, input_ids):
+        loss_mask = [0] * len(input_ids)
+        i = 0
+        while i < len(input_ids):
+            if input_ids[i:i + len(self.bos_id)] == self.bos_id:
+                start = i + len(self.bos_id)
+                end = start
+                while end < len(input_ids):
+                    if input_ids[end:end + len(self.eos_id)] == self.eos_id:
+                        break
+                    end += 1
+                for j in range(start + 1, min(end + len(self.eos_id) + 1, self.max_length)):
+                    loss_mask[j] = 1
+                i = end + len(self.eos_id) if end < len(input_ids) else len(input_ids)
+            else:
+                i += 1
+        return loss_mask
+
+    def __getitem__(self, index):
+        sample = self.samples[index]
+        prompt = self.create_chat_prompt(sample['conversations'])
+        input_ids = self.tokenizer(prompt).input_ids[:self.max_length]
+        input_ids += [self.tokenizer.pad_token_id] * (self.max_length - len(input_ids))
+        loss_mask = self.generate_loss_mask(input_ids)
+
+        X = torch.tensor(input_ids[:-1], dtype=torch.long)
+        Y = torch.tensor(input_ids[1:], dtype=torch.long)
+        loss_mask = torch.tensor(loss_mask[1:], dtype=torch.long)
+        return X, Y, loss_mask
+
+
 class SFTDataset(Dataset):
     def __init__(self, jsonl_path, tokenizer, max_length=1024):
         super().__init__()

@@ -121,12 +121,14 @@ if __name__ == "__main__":
     parser.add_argument("--grad_clip", type=float, default=1.0, help="Gradient clipping threshold")
     parser.add_argument("--log_interval", type=int, default=10, help="Logging interval")
     parser.add_argument("--save_interval", type=int, default=100, help="Model save interval")
-    parser.add_argument('--hidden_size', default=768, type=int, help="Hidden dimension (Base model)")
-    parser.add_argument('--num_hidden_layers', default=16, type=int, help="Number of layers (Base model)")
-    parser.add_argument('--vocab_size', default=10000, type=int, help="Vocabulary size")
+    parser.add_argument('--hidden_size', default=512, type=int, help="Hidden dimension (Base model)")
+    parser.add_argument('--num_hidden_layers', default=8, type=int, help="Number of layers (Base model)")
+    parser.add_argument('--vocab_size', default=12000, type=int, help="Vocabulary size")
     parser.add_argument('--max_seq_len', default=1024, type=int, help="Training sequence length")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="Use MoE architecture")
-    parser.add_argument("--data_path", type=str, default="../dataset/hindi/sft_hindi.jsonl", help="SFT data path")
+    parser.add_argument("--data_path", type=str, default="../dataset/hindi/sft_hindi.jsonl", help="SFT data path (local JSONL or HuggingFace dataset)")
+    parser.add_argument("--hf_dataset", type=str, default=None, help="HuggingFace dataset name (e.g., ai4bharat/indic-instruct)")
+    parser.add_argument("--hf_split", type=str, default="hi", help="HuggingFace dataset split/language (e.g., hi for Hindi)")
     parser.add_argument('--from_weight', default='pretrain_hindi', type=str, help="Base checkpoint to fine-tune")
     parser.add_argument('--tokenizer_path', default='../model_hindi', type=str, help="Hindi tokenizer path")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="Auto-detect & resume training")
@@ -134,6 +136,11 @@ if __name__ == "__main__":
     parser.add_argument("--wandb_project", type=str, default="MiniMind-Hindi-SFT", help="WandB project name")
 
     args = parser.parse_args()
+
+    # Auto-fix num_workers on Windows (multiprocessing issues)
+    if sys.platform == 'win32' and args.num_workers > 0:
+        print(f"Windows detected: Setting num_workers=0 (was {args.num_workers})")
+        args.num_workers = 0
 
     # ========== 1. Initialize environment and seed ==========
     Logger("=" * 60)
@@ -143,7 +150,7 @@ if __name__ == "__main__":
     Logger(f"Vocab Size: {args.vocab_size}")
     Logger(f"Hidden Size: {args.hidden_size}")
     Logger(f"Layers: {args.num_hidden_layers}")
-    Logger(f"Data: {args.data_path}")
+    Logger(f"Data: {args.hf_dataset or args.data_path}")
     Logger("=" * 60)
 
     local_rank = init_distributed_mode()
@@ -206,7 +213,21 @@ if __name__ == "__main__":
     Logger(f"Model Parameters: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")
     Logger(f"Trainable Parameters: {sum(p.numel() for p in model.parameters() if p.requires_grad) / 1e6:.2f}M")
 
-    train_ds = SFTDataset(args.data_path, tokenizer, max_length=args.max_seq_len)
+    # ========== Load SFT Dataset ==========
+    if args.hf_dataset:
+        # Load from HuggingFace dataset
+        from dataset.lm_dataset import HuggingFaceSFTDataset
+        Logger(f"Loading from HuggingFace: {args.hf_dataset} (split: {args.hf_split})")
+        train_ds = HuggingFaceSFTDataset(
+            dataset_name=args.hf_dataset,
+            tokenizer=tokenizer,
+            max_length=args.max_seq_len,
+            split=args.hf_split
+        )
+    else:
+        # Load from local JSONL file
+        Logger(f"Loading from local file: {args.data_path}")
+        train_ds = SFTDataset(args.data_path, tokenizer, max_length=args.max_seq_len)
     Logger(f"Dataset size: {len(train_ds)}")
 
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
