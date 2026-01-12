@@ -181,9 +181,15 @@ if __name__ == "__main__":
     # ========== 5. Initialize model, data, optimizer ==========
     Logger("Loading model and tokenizer...")
 
-    # Custom init_model with tokenizer path support
-    from transformers import AutoTokenizer
-    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
+    # Use HindiTokenizer wrapper for consistent normalization (training = inference)
+    try:
+        from model.HindiTokenizer import HindiTokenizer
+        tokenizer = HindiTokenizer.from_pretrained(args.tokenizer_path)
+        Logger("Using HindiTokenizer wrapper (consistent Indic normalization)")
+    except ImportError:
+        Logger("Warning: HindiTokenizer not available, using AutoTokenizer (no Indic normalization)")
+        from transformers import AutoTokenizer
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
     model = MiniMindForCausalLM(lm_config).to(args.device)
 
     if args.from_weight != 'none':

@@ -73,8 +73,19 @@ class HindiTokenizerEvaluator:
     def load_tokenizer(self):
         """Load the tokenizer from the given path."""
         try:
-            from transformers import AutoTokenizer
+            # Try HindiTokenizer wrapper first (consistent normalization)
+            try:
+                from model.HindiTokenizer import HindiTokenizer
+                print(f"Loading tokenizer from: {self.tokenizer_path}")
+                self.tokenizer = HindiTokenizer.from_pretrained(str(self.tokenizer_path))
+                self.vocab_size = self.tokenizer.vocab_size
+                print(f"✓ HindiTokenizer loaded! Vocab size: {self.vocab_size}")
+                return True
+            except ImportError:
+                pass
 
+            # Fallback to AutoTokenizer
+            from transformers import AutoTokenizer
             print(f"Loading tokenizer from: {self.tokenizer_path}")
             self.tokenizer = AutoTokenizer.from_pretrained(
                 str(self.tokenizer_path),

@@ -50,7 +50,7 @@ class HindiTokenizerConfig:
     """Configuration for Hindi tokenizer training."""
 
     # Tokenizer parameters
-    vocab_size: int = 10000  # Vocabulary size (10K for Hindi+English)
+    vocab_size: int = 12000  # Vocabulary size (12K for Hindi+English)
     min_frequency: int = 2  # Minimum token frequency
 
     # Special tokens (must match MiniMind format)
@@ -74,12 +74,12 @@ class HindiTokenizerConfig:
 class HindiModelConfig:
     """Configuration for Hindi model architecture."""
 
-    # Model size (Base model - 104M params)
-    hidden_size: int = 768
-    num_hidden_layers: int = 16
+    # Model size (Small model - ~26M params, matching MiniMind default)
+    hidden_size: int = 512
+    num_hidden_layers: int = 8
     num_attention_heads: int = 8
     num_key_value_heads: int = 2
-    vocab_size: int = 10000
+    vocab_size: int = 12000
 
     # Sequence length
     max_seq_len: int = 512  # For pretraining

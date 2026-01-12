@@ -33,3 +33,4 @@ checkpoints_hindi/
 # Jupyter notebooks
 .ipynb_checkpoints/
 config/__pycache__/hindi_config.cpython-312.pyc
+model_hindi/corpus_temp.txt

@@ -224,6 +224,10 @@ def train_tokenizer(
         character_coverage: Character coverage (0.9995 recommended for Hindi-dominant bilingual)
         model_type: SentencePiece model type ("unigram" or "bpe")
     """
+    # Validate inputs
+    if not 0.0 < character_coverage <= 1.0:
+        raise ValueError(f"character_coverage must be in (0, 1], got {character_coverage}")
+
     print("=" * 60)
     print("HINDI TOKENIZER TRAINING (SentencePiece)")
     print("=" * 60)
@@ -253,7 +257,12 @@ def train_tokenizer(
         min_length=min_length
     )
 
-    # Initialize Indic normalizer for Hindi
+    # Initialize Indic normalizer and syllabifier for Hindi
+    indic_normalizer = None
+    syllabify_func = None
+    use_indic_norm = False
+    use_syllabifier = False
+
     try:
         from indicnlp.normalize.indic_normalize import IndicNormalizerFactory
         normalizer_factory = IndicNormalizerFactory()
@@ -261,18 +270,21 @@ def train_tokenizer(
         use_indic_norm = True
         print("  Using Indic NLP normalizer for Hindi")
     except ImportError:
-        indic_normalizer = None
-        use_indic_norm = False
-        print("  Note: indic-nlp-library not available, using basic normalization")
+        print("  Note: indic-nlp-library normalizer not available")
+
+    # Note: Syllabifier removed - letting Unigram algorithm optimize freely
+    # The indic_normalizer ensures consistent preprocessing
+    # Use model/HindiTokenizer.py wrapper at inference for consistency
 
     # Write texts to file for SentencePiece
-    # Note: SentencePiece applies NFKC normalization internally (normalization_rule_name="nfkc")
-    # We only apply Indic-specific normalization here if available
+    # Note: We apply Indic-specific normalization here. The same normalization
+    # MUST be applied at inference time using model/HindiTokenizer.py wrapper.
     count = 0
     with open(corpus_file, 'w', encoding='utf-8') as f:
         for text in texts:
             text = text.strip()
             # Apply Indic-specific normalization (handles Devanagari quirks)
+            # IMPORTANT: Use HindiTokenizer wrapper at inference for consistency
             if use_indic_norm:
                 text = indic_normalizer.normalize(text)
             # Write each line
@@ -292,241 +304,71 @@ def train_tokenizer(
     if count < 10000:
         print(f"  ⚠ Warning: Only {count:,} lines. Recommend at least 100,000 for good tokenization.")
 
-    # Common Hindi conjuncts and morphological units to protect from splitting
-    # These will be added as user_defined_symbols to prevent breaking
+    # ═══════════════════════════════════════════════════════════════
+    # MINIMAL PROTECTED SYMBOLS
+    # ═══════════════════════════════════════════════════════════════
+    # Note: We intentionally use MINIMAL protected symbols to let the
+    # Unigram algorithm optimize freely. Previous approach of forcing
+    # 500+ syllables was overriding statistical optimization.
+    #
+    # Devanagari conjuncts render correctly even when split because:
+    # - Conjunct = base + virama + consonant (e.g., क्ष = क + ् + ष)
+    # - Decoding reconstructs the sequence, rendering engine handles display
+    # - byte_fallback=True ensures no UNK tokens
+
+    # Minimal protected symbols - only the 3 most common conjuncts
+    # that have special typographic rendering and are extremely common.
+    # Let Unigram algorithm handle everything else optimally.
     hindi_protected_symbols = [
-        # ═══════════════════════════════════════════════════════════════
-        # CONJUNCTS (संयुक्त अक्षर) - Must never be split
-        # ═══════════════════════════════════════════════════════════════
-        # क-series
-        "क्क", "क्ख", "क्त", "क्र", "क्ल", "क्व", "क्ष",
-        # ख-series
-        "ख्य",
-        # ग-series
-        "ग्ग", "ग्द", "ग्ध", "ग्न", "ग्म", "ग्य", "ग्र", "ग्ल", "ग्व",
-        # घ-series
-        "घ्न", "घ्र",
-        # च-series
-        "च्च", "च्छ", "च्य",
-        # ज-series
-        "ज्ज", "ज्ञ", "ज्य", "ज्र", "ज्व",
-        # ट-series
-        "ट्ट", "ट्य",
-        # ड-series
-        "ड्ड", "ड्य",
-        # ण-series
-        "ण्ट", "ण्ठ", "ण्ड", "ण्ढ", "ण्य",
-        # त-series
-        "त्त", "त्थ", "त्न", "त्म", "त्य", "त्र", "त्व", "त्स",
-        # थ-series
-        "थ्य",
-        # द-series
-        "द्ग", "द्घ", "द्द", "द्ध", "द्न", "द्ब", "द्भ", "द्म", "द्य", "द्र", "द्व",
-        # ध-series
-        "ध्न", "ध्य", "ध्र", "ध्व",
-        # न-series
-        "न्त", "न्थ", "न्द", "न्ध", "न्न", "न्म", "न्य", "न्र", "न्व", "न्ह",
-        # प-series
-        "प्त", "प्न", "प्प", "प्य", "प्र", "प्ल", "प्स",
-        # ब-series
-        "ब्ज", "ब्द", "ब्ध", "ब्ब", "ब्य", "ब्र", "ब्व",
-        # भ-series
-        "भ्य", "भ्र",
-        # म-series
-        "म्न", "म्प", "म्ब", "म्भ", "म्म", "म्य", "म्र", "म्ल", "म्व",
-        # य-series
-        "य्य",
-        # र-series (special - र् combines differently)
-        # ल-series
-        "ल्क", "ल्प", "ल्ल", "ल्य", "ल्व",
-        # व-series
-        "व्य", "व्र",
-        # श-series
-        "श्च", "श्न", "श्म", "श्य", "श्र", "श्ल", "श्व",
-        # ष-series
-        "ष्क", "ष्ट", "ष्ठ", "ष्ण", "ष्प", "ष्म", "ष्य", "ष्व",
-        # स-series
-        "स्क", "स्ख", "स्त", "स्थ", "स्न", "स्प", "स्फ", "स्म", "स्य", "स्र", "स्व",
-        # ह-series
-        "ह्न", "ह्म", "ह्य", "ह्र", "ह्ल", "ह्व",
-
-        # ═══════════════════════════════════════════════════════════════
-        # VERB MORPHOLOGY (क्रिया रूप)
-        # ═══════════════════════════════════════════════════════════════
-        # Infinitive (मूल रूप)
-        "ना", "नी", "ने",
-        # Present tense (वर्तमान काल)
-        "ता", "ती", "ते",
-        "ता है", "ती है", "ते हैं",
-        "रहा", "रही", "रहे",
-        # Past tense (भूतकाल)
-        "या", "यी", "ये",
-        "गया", "गयी", "गये", "गए",
-        "था", "थी", "थे",
-        "चुका", "चुकी", "चुके",
-        # Future tense (भविष्य काल)
-        "गा", "गी", "गे",
-        "ूँगा", "ूँगी", "ेंगे", "ेंगी",
-        "ऊँगा", "ऊँगी", "ओगे", "ओगी",
-        "ाऊँगा", "ाऊँगी", "ाओगे", "ाओगी",
-        "ाएगा", "ाएगी", "ाएँगे", "ाएँगी",
-        # Imperative (आज्ञार्थ)
-        "ो", "ओ", "इए", "िए", "ीजिए",
-        # Subjunctive (संभावनार्थ)
-        "ूँ", "ें", "े",
-        # Conditional
-        "ता तो", "ती तो", "ते तो",
-        # Compound verb helpers
-        "कर", "करके", "करना", "करता", "करती", "करते",
-        "जा", "जाना", "जाता", "जाती", "जाते",
-        "ले", "लेना", "लेता", "लेती", "लेते",
-        "दे", "देना", "देता", "देती", "देते",
-        "रख", "रखना", "रखता", "रखती", "रखते",
-        "डाल", "डालना", "डालता", "डालती", "डालते",
-        "पड़", "पड़ना", "पड़ता", "पड़ती", "पड़ते",
-        "सक", "सकता", "सकती", "सकते",
-        "चाह", "चाहना", "चाहता", "चाहती", "चाहते", "चाहिए",
-        "पा", "पाना", "पाता", "पाती", "पाते",
-        "हो", "होना", "होता", "होती", "होते", "होगा", "होगी", "होंगे",
-        # Stative/Aspectual completers (review addition)
-        "पड़ा", "पड़ी", "पड़े", "बैठा", "बैठी", "बैठे", "उठा", "उठी", "उठे",
-        "हुआ", "हुई", "हुए", "लगा", "लगी", "लगे",
-
-        # ═══════════════════════════════════════════════════════════════
-        # NOUN MORPHOLOGY (संज्ञा रूप)
-        # ═══════════════════════════════════════════════════════════════
-        # Case markers (कारक चिह्न) / Postpositions
-        "का", "की", "के",
-        "को", "से", "में", "पर", "तक", "द्वारा",
-        "के लिए", "की ओर", "के साथ", "के बारे", "के बाद", "से पहले",
-        "के अंदर", "के बाहर", "के ऊपर", "के नीचे", "के बीच",
-        # Additional compound postpositions (review addition)
-        "के माध्यम", "की वजह", "के कारण", "की तरफ", "के प्रति",
-        # Plural markers (2+ chars only, single matras learned naturally)
-        "याँ", "ियाँ", "ियों",
-        # Gender/Number suffixes - removed single matras (ा, ी, े, ीं)
-        # Note: Single matras interfere with natural tokenization
-        # Abstract noun suffixes (2+ chars only)
-        "ता", "त्व", "पन", "पना", "आई", "ाई", "ाव", "ावट", "ाहट",
-        "गी", "री", "इया",
-        # Additional productive suffixes (review addition)
-        "इका", "ईका", "ईया", "ाना", "ाने", "ानी",
-        "आलू", "ईला", "ईली",
-        # Agent/Doer suffixes
-        "वाला", "वाली", "वाले",
-        "कार", "कारी", "दार", "दारी",
-        "इया", "इए",
-        # Adverb-forming suffixes (review addition)
-        "पूर्वक", "वार", "भर", "मात्र",
-        # Diminutive
-        "ड़ा", "ड़ी",
-
-        # ═══════════════════════════════════════════════════════════════
-        # ADJECTIVE MORPHOLOGY (विशेषण रूप)
-        # ═══════════════════════════════════════════════════════════════
-        # Comparative/Superlative
-        "तर", "तम", "तरीन",
-        "सबसे", "बहुत", "काफी", "थोड़ा",
-        # Common adjective endings
-        "ीय", "िक", "मय", "पूर्ण", "हीन", "युक्त", "रहित",
-        "शील", "मान", "वान", "वती",
-
-        # ═══════════════════════════════════════════════════════════════
-        # PRONOUNS AND COMMON WORDS (सर्वनाम और सामान्य शब्द)
-        # ═══════════════════════════════════════════════════════════════
-        "मैं", "मुझ", "मेरा", "मेरी", "मेरे",
-        "तू", "तुझ", "तेरा", "तेरी", "तेरे",
-        "तुम", "तुम्हें", "तुम्हारा", "तुम्हारी", "तुम्हारे",
-        "आप", "आपको", "आपका", "आपकी", "आपके",
-        "यह", "इस", "इसका", "इसकी", "इसके", "इसे", "इसमें",
-        "वह", "उस", "उसका", "उसकी", "उसके", "उसे", "उसमें",
-        "ये", "इन", "इनका", "इनकी", "इनके", "इन्हें",
-        "वे", "उन", "उनका", "उनकी", "उनके", "उन्हें",
-        "कौन", "क्या", "कहाँ", "कब", "कैसे", "क्यों", "कितना", "कितनी", "कितने",
-        "जो", "जिस", "जिसका", "जिसकी", "जिसके", "जिसे", "जिसमें",
-        "हम", "हमें", "हमारा", "हमारी", "हमारे",
-        "अपना", "अपनी", "अपने", "खुद",
-
-        # ═══════════════════════════════════════════════════════════════
-        # COMMON PREFIXES (उपसर्ग) - Only 2+ char prefixes
-        # Note: Single char prefixes (अ, आ, उ) omitted - learned naturally
-        # ═══════════════════════════════════════════════════════════════
-        "अन", "अध", "अधि", "अनु", "अप", "अभि", "अव",
-        "उप", "उत", "दु", "दुर", "दुस",
-        "नि", "निर", "निस", "पर", "परा", "परि", "प्र", "प्रति",
-        "वि", "सं", "सम", "सु", "स्व",
-
-        # ═══════════════════════════════════════════════════════════════
-        # NUMBERS (संख्याएँ)
-        # ═══════════════════════════════════════════════════════════════
-        "एक", "दो", "तीन", "चार", "पाँच", "छह", "सात", "आठ", "नौ", "दस",
-        "ग्यारह", "बारह", "तेरह", "चौदह", "पंद्रह", "सोलह", "सत्रह", "अठारह", "उन्नीस", "बीस",
-        "सौ", "हज़ार", "लाख", "करोड़", "अरब",
-        "पहला", "दूसरा", "तीसरा", "चौथा", "पाँचवाँ",
-        "पहली", "दूसरी", "तीसरी", "चौथी", "पाँचवीं",
-
-        # ═══════════════════════════════════════════════════════════════
-        # CONNECTORS AND PARTICLES (संयोजक और अव्यय)
-        # ═══════════════════════════════════════════════════════════════
-        "और", "या", "एवं", "तथा", "अथवा",
-        "लेकिन", "परंतु", "किंतु", "मगर", "पर",
-        "क्योंकि", "इसलिए", "अतः", "अतएव",
-        "कि", "जो", "जब", "तब", "यदि", "अगर", "तो", "फिर",
-        "भी", "ही", "तो", "न", "ना", "नहीं", "मत",
-        "शायद", "जरूर", "अवश्य", "केवल", "सिर्फ", "बस",
-
-        # ═══════════════════════════════════════════════════════════════
-        # HONORIFICS AND TITLES (सम्मान सूचक)
-        # ═══════════════════════════════════════════════════════════════
-        "जी", "साहब", "साहिब", "श्री", "श्रीमती", "कुमारी", "डॉ", "प्रो",
+        "क्ष",  # ksha - very common (क्षमा, रक्षा, शिक्षा)
+        "त्र",  # tra - very common (त्रिभुज, मंत्र, सूत्र)
+        "ज्ञ",  # gya - important (ज्ञान, विज्ञान, यज्ञ)
     ]
 
-    # Remove duplicates and very short symbols (single char matras)
-    # Single characters can interfere with natural subword formation
-    hindi_protected_symbols = list(set(
-        s for s in hindi_protected_symbols
-        if len(s) >= 2 or s in ["का", "की", "के", "को", "से", "में", "पर"]  # Keep essential 2-char postpositions
-    ))
-    hindi_protected_symbols.sort()  # Sort for reproducibility
+    print(f"  Protected symbols: {len(hindi_protected_symbols)} (minimal - letting Unigram optimize)")
 
-    print(f"  Protected symbols: {len(hindi_protected_symbols)} morphological units (deduplicated)")
-
-    # Train SentencePiece
+    # Train SentencePiece with proper cleanup on failure
     print("\nTraining SentencePiece tokenizer...")
     model_prefix = os.path.join(tokenizer_dir, "tokenizer")
 
-    spm.SentencePieceTrainer.train(
-        input=corpus_file,
-        model_prefix=model_prefix,
-        vocab_size=vocab_size,
-        character_coverage=character_coverage,
-        model_type=model_type,
-        # Special tokens handling
-        # SentencePiece reserves: unk=0, bos=1, eos=2
-        # We use <|endoftext|> as unk (ID 0), which also serves as PAD
-        pad_id=-1,  # Disable separate pad (we'll use unk as pad)
-        unk_id=0,
-        bos_id=1,
-        eos_id=2,
-        unk_piece="<|endoftext|>",
-        bos_piece="<|im_start|>",
-        eos_piece="<|im_end|>",
-        # Protect Hindi conjuncts and common syllables
-        user_defined_symbols=hindi_protected_symbols,
-        # Training settings
-        split_digits=True,
-        byte_fallback=True,  # Handle unknown characters via bytes
-        normalization_rule_name="nfkc",  # Unicode normalization
-        num_threads=os.cpu_count() or 4,
-        # For Indic languages
-        split_by_unicode_script=True,
-        split_by_whitespace=True,
-        split_by_number=True,
-        # Large corpus support
-        train_extremely_large_corpus=True,
-        input_sentence_size=5000000,  # Limit sentences for memory (5M)
-        shuffle_input_sentence=True,
-    )
+    try:
+        spm.SentencePieceTrainer.train(
+            input=corpus_file,
+            model_prefix=model_prefix,
+            vocab_size=vocab_size,
+            character_coverage=character_coverage,
+            model_type=model_type,
+            # Special tokens handling
+            # SentencePiece reserves: unk=0, bos=1, eos=2
+            # We use <|endoftext|> as unk (ID 0), which also serves as PAD
+            pad_id=-1,  # Disable separate pad (we'll use unk as pad)
+            unk_id=0,
+            bos_id=1,
+            eos_id=2,
+            unk_piece="<|endoftext|>",
+            bos_piece="<|im_start|>",
+            eos_piece="<|im_end|>",
+            # Minimal protected symbols (let Unigram optimize)
+            user_defined_symbols=hindi_protected_symbols,
+            # Training settings
+            split_digits=True,
+            byte_fallback=True,  # Handle unknown characters via bytes
+            normalization_rule_name="nfkc",  # Unicode normalization
+            num_threads=os.cpu_count() or 4,
+            # For Indic languages
+            split_by_unicode_script=True,
+            split_by_whitespace=True,
+            split_by_number=True,
+            # Large corpus support
+            train_extremely_large_corpus=True,
+            input_sentence_size=5000000,  # Limit sentences for memory (5M)
+            shuffle_input_sentence=True,
+        )
+    finally:
+        # Clean up temp corpus file even on failure (can be GBs)
+        if os.path.exists(corpus_file):
+            os.remove(corpus_file)
+            print(f"✓ Cleaned up temporary corpus file")
 
     print(f"✓ SentencePiece model saved to {model_prefix}.model")
 
@@ -539,11 +381,6 @@ def train_tokenizer(
     print(f"  BOS (<|im_start|>): {sp.piece_to_id('<|im_start|>')}")
     print(f"  EOS (<|im_end|>): {sp.piece_to_id('<|im_end|>')}")
     print(f"  Vocab size: {sp.get_piece_size()}")
-
-    # Clean up temp corpus file
-    if os.path.exists(corpus_file):
-        os.remove(corpus_file)
-        print(f"✓ Cleaned up temporary corpus file")
 
     # Create tokenizer config with chat template
     # Use default system message from config
@@ -617,6 +454,14 @@ def train_tokenizer(
     print("=" * 60)
     print(f"Vocab size: {sp.get_piece_size()}")
     print(f"Output: {tokenizer_dir}")
+    print("=" * 60)
+    print("\nIMPORTANT: For inference, use the HindiTokenizer wrapper to ensure")
+    print("consistent normalization between training and inference:")
+    print("")
+    print("  from model.HindiTokenizer import HindiTokenizer")
+    print(f"  tokenizer = HindiTokenizer.from_pretrained('{tokenizer_dir}')")
+    print("")
+    print("This wrapper applies the same Indic normalization used during training.")
     print("=" * 60)
 
 

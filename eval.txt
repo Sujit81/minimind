@@ -1,0 +1,1319 @@
+======================================================================
+HINDI TOKENIZER COMPREHENSIVE EVALUATION
+हिंदी टोकननाइज़र व्यापक मूल्यांकन
+======================================================================
+Tokenizer: ./model_hindi
+Vocab size: 12000
+======================================================================
+
+──────────────────────────────────────────────────────────────────────
+Testing: Special Tokens
+──────────────────────────────────────────────────────────────────────
+  ✓ Special token: <|endoftext|>
+      Expected ID 0, got 0
+  ✓ Special token: <|im_start|>
+      Expected ID 1, got 1
+  ✓ Special token: <|im_end|>
+      Expected ID 2, got 2
+
+  Category Result: 3/3 passed (100.0%)
+
+──────────────────────────────────────────────────────────────────────
+Testing: Conjuncts (संयुक्त अक्षर)
+──────────────────────────────────────────────────────────────────────
+  ✓ Conjunct (Common): क्ष
+      Tokens: ['▁', 'क्ष']
+      Tokens: ['▁', 'क्ष']
+  ✓ Conjunct (Common): त्र
+      Tokens: ['▁', 'त्र']
+      Tokens: ['▁', 'त्र']
+  ✓ Conjunct (Common): ज्ञ
+      Tokens: ['▁', 'ज्ञ']
+      Tokens: ['▁', 'ज्ञ']
+  ✓ Conjunct (Common): श्र
+      Tokens: ['▁', 'श्र']
+      Tokens: ['▁', 'श्र']
+  ✓ Conjunct (Common): द्व
+      Tokens: ['▁', 'द्व']
+      Tokens: ['▁', 'द्व']
+  ✓ Conjunct (Common): द्य
+      Tokens: ['▁', 'द्य']
+      Tokens: ['▁', 'द्य']
+  ✓ Conjunct (Common): त्य
+      Tokens: ['▁', 'त्य']
+      Tokens: ['▁', 'त्य']
+  ✓ Conjunct (Common): स्त
+      Tokens: ['▁', 'स्त']
+      Tokens: ['▁', 'स्त']
+  ✓ Conjunct (Common): स्थ
+      Tokens: ['▁', 'स्थ']
+      Tokens: ['▁', 'स्थ']
+  ✓ Conjunct (Common): न्य
+      Tokens: ['▁', 'न्य']
+      Tokens: ['▁', 'न्य']
+  ✓ Conjunct (क-series): क्क
+      Tokens: ['▁', 'क्क']
+      Tokens: ['▁', 'क्क']
+  ✓ Conjunct (क-series): क्त
+      Tokens: ['▁', 'क्त']
+      Tokens: ['▁', 'क्त']
+  ✓ Conjunct (क-series): क्र
+      Tokens: ['▁', 'क्र']
+      Tokens: ['▁', 'क्र']
+  ✓ Conjunct (क-series): क्ल
+      Tokens: ['▁', 'क्ल']
+      Tokens: ['▁', 'क्ल']
+  ✓ Conjunct (क-series): क्व
+      Tokens: ['▁', 'क्व']
+      Tokens: ['▁', 'क्व']
+  ✓ Conjunct (क-series): क्ष
+      Tokens: ['▁', 'क्ष']
+      Tokens: ['▁', 'क्ष']
+  ✓ Conjunct (त-series): त्त
+      Tokens: ['▁', 'त्त']
+      Tokens: ['▁', 'त्त']
+  ✓ Conjunct (त-series): त्न
+      Tokens: ['▁', 'त्न']
+      Tokens: ['▁', 'त्न']
+  ✓ Conjunct (त-series): त्म
+      Tokens: ['▁', 'त्म']
+      Tokens: ['▁', 'त्म']
+  ✓ Conjunct (त-series): त्य
+      Tokens: ['▁', 'त्य']
+      Tokens: ['▁', 'त्य']
+  ✓ Conjunct (त-series): त्र
+      Tokens: ['▁', 'त्र']
+      Tokens: ['▁', 'त्र']
+  ✓ Conjunct (त-series): त्व
+      Tokens: ['▁', 'त्व']
+      Tokens: ['▁', 'त्व']
+  ✓ Conjunct (त-series): त्स
+      Tokens: ['▁', 'त्स']
+      Tokens: ['▁', 'त्स']
+  ✓ Conjunct (द-series): द्ग
+      Tokens: ['▁', 'द्ग']
+      Tokens: ['▁', 'द्ग']
+  ✓ Conjunct (द-series): द्द
+      Tokens: ['▁', 'द्द']
+      Tokens: ['▁', 'द्द']
+  ✓ Conjunct (द-series): द्ध
+      Tokens: ['▁', 'द्ध']
+      Tokens: ['▁', 'द्ध']
+  ✓ Conjunct (द-series): द्न
+      Tokens: ['▁', 'द्न']
+      Tokens: ['▁', 'द्न']
+  ✓ Conjunct (द-series): द्म
+      Tokens: ['▁', 'द्म']
+      Tokens: ['▁', 'द्म']
+  ✓ Conjunct (द-series): द्य
+      Tokens: ['▁', 'द्य']
+      Tokens: ['▁', 'द्य']
+  ✓ Conjunct (द-series): द्र
+      Tokens: ['▁', 'द्र']
+      Tokens: ['▁', 'द्र']
+  ✓ Conjunct (द-series): द्व
+      Tokens: ['▁', 'द्व']
+      Tokens: ['▁', 'द्व']
+  ✓ Conjunct (न-series): न्त
+      Tokens: ['▁', 'न्त']
+      Tokens: ['▁', 'न्त']
+  ✓ Conjunct (न-series): न्द
+      Tokens: ['▁', 'न्द']
+      Tokens: ['▁', 'न्द']
+  ✓ Conjunct (न-series): न्ध
+      Tokens: ['▁', 'न्ध']
+      Tokens: ['▁', 'न्ध']
+  ✓ Conjunct (न-series): न्न
+      Tokens: ['▁', 'न्न']
+      Tokens: ['▁', 'न्न']
+  ✓ Conjunct (न-series): न्म
+      Tokens: ['▁', 'न्म']
+      Tokens: ['▁', 'न्म']
+  ✓ Conjunct (न-series): न्य
+      Tokens: ['▁', 'न्य']
+      Tokens: ['▁', 'न्य']
+  ✓ Conjunct (न-series): न्र
+      Tokens: ['▁', 'न्र']
+      Tokens: ['▁', 'न्र']
+  ✓ Conjunct (न-series): न्व
+      Tokens: ['▁', 'न्व']
+      Tokens: ['▁', 'न्व']
+  ✓ Conjunct (स-series): स्क
+      Tokens: ['▁', 'स्क']
+      Tokens: ['▁', 'स्क']
+  ✓ Conjunct (स-series): स्त
+      Tokens: ['▁', 'स्त']
+      Tokens: ['▁', 'स्त']
+  ✓ Conjunct (स-series): स्थ
+      Tokens: ['▁', 'स्थ']
+      Tokens: ['▁', 'स्थ']
+  ✓ Conjunct (स-series): स्न
+      Tokens: ['▁', 'स्न']
+      Tokens: ['▁', 'स्न']
+  ✓ Conjunct (स-series): स्प
+      Tokens: ['▁', 'स्प']
+      Tokens: ['▁', 'स्प']
+  ✓ Conjunct (स-series): स्म
+      Tokens: ['▁', 'स्म']
+      Tokens: ['▁', 'स्म']
+  ✓ Conjunct (स-series): स्य
+      Tokens: ['▁', 'स्य']
+      Tokens: ['▁', 'स्य']
+  ✓ Conjunct (स-series): स्र
+      Tokens: ['▁', 'स्र']
+      Tokens: ['▁', 'स्र']
+  ✓ Conjunct (स-series): स्व
+      Tokens: ['▁', 'स्व']
+      Tokens: ['▁', 'स्व']
+  ✓ Conjunct (श-series): श्च
+      Tokens: ['▁', 'श्च']
+      Tokens: ['▁', 'श्च']
+  ✓ Conjunct (श-series): श्न
+      Tokens: ['▁', 'श्न']
+      Tokens: ['▁', 'श्न']
+  ✓ Conjunct (श-series): श्म
+      Tokens: ['▁', 'श्म']
+      Tokens: ['▁', 'श्म']
+  ✓ Conjunct (श-series): श्य
+      Tokens: ['▁', 'श्य']
+      Tokens: ['▁', 'श्य']
+  ✓ Conjunct (श-series): श्र
+      Tokens: ['▁', 'श्र']
+      Tokens: ['▁', 'श्र']
+  ✓ Conjunct (श-series): श्ल
+      Tokens: ['▁', 'श्ल']
+      Tokens: ['▁', 'श्ल']
+  ✓ Conjunct (श-series): श्व
+      Tokens: ['▁', 'श्व']
+      Tokens: ['▁', 'श्व']
+
+  Category Result: 55/55 passed (100.0%)
+
+──────────────────────────────────────────────────────────────────────
+Testing: Verb Morphology (क्रिया रूप)
+──────────────────────────────────────────────────────────────────────
+  ✓ Verb (Infinitive (मूल रूप)): करना
+      Tokens: ['▁', 'करना']
+      Tokens: ['▁', 'करना']
+  ✓ Verb (Infinitive (मूल रूप)): जाना
+      Tokens: ['▁', 'जाना']
+      Tokens: ['▁', 'जाना']
+  ✓ Verb (Infinitive (मूल रूप)): खाना
+      Tokens: ['▁', 'ख', 'ाना']
+      Tokens: ['▁', 'ख', 'ाना']
+  ✓ Verb (Infinitive (मूल रूप)): पीना
+      Tokens: ['▁पी', 'ना']
+      Tokens: ['▁पी', 'ना']
+  ✓ Verb (Infinitive (मूल रूप)): सोना
+      Tokens: ['▁', 'सो', 'ना']
+      Tokens: ['▁', 'सो', 'ना']
+  ✗ Verb (Infinitive (मूल रूप)): देखना
+      Tokens: ['▁', 'दे', 'ख', 'ना']
+      Tokens: ['▁', 'दे', 'ख', 'ना']
+  ✗ Verb (Infinitive (मूल रूप)): सुनना
+      Tokens: ['▁', 'सु', 'न', 'ना']
+      Tokens: ['▁', 'सु', 'न', 'ना']
+  ✓ Verb (Infinitive (मूल रूप)): बोलना
+      Tokens: ['▁बोल', 'ना']
+      Tokens: ['▁बोल', 'ना']
+  ✓ Verb (Present Habitual (सामान्य वर्तमान)): करता
+      Tokens: ['▁', 'करता']
+      Tokens: ['▁', 'करता']
+  ✓ Verb (Present Habitual (सामान्य वर्तमान)): करती
+      Tokens: ['▁', 'करती']
+      Tokens: ['▁', 'करती']
+  ✓ Verb (Present Habitual (सामान्य वर्तमान)): करते
+      Tokens: ['▁', 'करते']
+      Tokens: ['▁', 'करते']
+  ✓ Verb (Present Habitual (सामान्य वर्तमान)): जाता
+      Tokens: ['▁', 'जाता']
+      Tokens: ['▁', 'जाता']
+  ✓ Verb (Present Habitual (सामान्य वर्तमान)): जाती
+      Tokens: ['▁', 'जाती']
+      Tokens: ['▁', 'जाती']
+  ✓ Verb (Present Habitual (सामान्य वर्तमान)): जाते
+      Tokens: ['▁', 'जाते']
+      Tokens: ['▁', 'जाते']
+  ✓ Verb (Present Continuous (अपूर्ण वर्तमान)): कर रहा है
+      Tokens: ['▁', 'कर', '▁', 'रहा', '▁है']
+      Tokens: ['▁', 'कर', '▁', 'रहा', '▁है']
+  ✓ Verb (Present Continuous (अपूर्ण वर्तमान)): कर रही है
+      Tokens: ['▁', 'कर', '▁', 'रही', '▁है']
+      Tokens: ['▁', 'कर', '▁', 'रही', '▁है']
+  ✓ Verb (Present Continuous (अपूर्ण वर्तमान)): कर रहे हैं
+      Tokens: ['▁', 'कर', '▁', 'रहे', '▁हैं']
+      Tokens: ['▁', 'कर', '▁', 'रहे', '▁हैं']
+  ✓ Verb (Present Continuous (अपूर्ण वर्तमान)): जा रहा है
+      Tokens: ['▁', 'जा', '▁', 'रहा', '▁है']
+      Tokens: ['▁', 'जा', '▁', 'रहा', '▁है']
+  ✓ Verb (Past (भूतकाल)): किया
+      Tokens: ['▁', 'कि', 'या']
+      Tokens: ['▁', 'कि', 'या']
+  ✓ Verb (Past (भूतकाल)): गया
+      Tokens: ['▁', 'गया']
+      Tokens: ['▁', 'गया']
+  ✓ Verb (Past (भूतकाल)): खाया
+      Tokens: ['▁', 'खा', 'या']
+      Tokens: ['▁', 'खा', 'या']
+  ✓ Verb (Past (भूतकाल)): देखा
+      Tokens: ['▁', 'दे', 'खा']
+      Tokens: ['▁', 'दे', 'खा']
+  ✓ Verb (Past (भूतकाल)): सुना
+      Tokens: ['▁', 'सु', 'ना']
+      Tokens: ['▁', 'सु', 'ना']
+  ✓ Verb (Past (भूतकाल)): बोला
+      Tokens: ['▁', 'बोला']
+      Tokens: ['▁', 'बोला']
+  ✓ Verb (Past Perfect (पूर्ण भूत)): किया था
+      Tokens: ['▁', 'कि', 'या', '▁', 'था']
+      Tokens: ['▁', 'कि', 'या', '▁', 'था']
+  ✓ Verb (Past Perfect (पूर्ण भूत)): गया था
+      Tokens: ['▁', 'गया', '▁', 'था']
+      Tokens: ['▁', 'गया', '▁', 'था']
+  ✓ Verb (Past Perfect (पूर्ण भूत)): खाया था
+      Tokens: ['▁', 'खा', 'या', '▁', 'था']
+      Tokens: ['▁', 'खा', 'या', '▁', 'था']
+  ✓ Verb (Past Perfect (पूर्ण भूत)): की थी
+      Tokens: ['▁', 'की', '▁', 'थी']
+      Tokens: ['▁', 'की', '▁', 'थी']
+  ✓ Verb (Past Perfect (पूर्ण भूत)): गई थी
+      Tokens: ['▁गई', '▁', 'थी']
+      Tokens: ['▁गई', '▁', 'थी']
+  ✗ Verb (Future (भविष्य काल)): करेगा
+      Tokens: ['▁', 'कर', 'े', 'गा']
+      Tokens: ['▁', 'कर', 'े', 'गा']
+  ✗ Verb (Future (भविष्य काल)): करेगी
+      Tokens: ['▁', 'कर', 'े', 'गी']
+      Tokens: ['▁', 'कर', 'े', 'गी']
+  ✓ Verb (Future (भविष्य काल)): करेंगे
+      Tokens: ['▁', 'कर', 'ेंगे']
+      Tokens: ['▁', 'कर', 'ेंगे']
+  ✗ Verb (Future (भविष्य काल)): जाएगा
+      Tokens: ['▁', 'जा', 'ए', 'गा']
+      Tokens: ['▁', 'जा', 'ए', 'गा']
+  ✗ Verb (Future (भविष्य काल)): जाएगी
+      Tokens: ['▁', 'जा', 'ए', 'गी']
+      Tokens: ['▁', 'जा', 'ए', 'गी']
+  ✓ Verb (Future (भविष्य काल)): जाएँगे
+      Tokens: ['▁', 'ज', 'ाएँगे']
+      Tokens: ['▁', 'ज', 'ाएँगे']
+  ✓ Verb (Imperative (आज्ञार्थ)): करो
+      Tokens: ['▁', 'कर', 'ो']
+      Tokens: ['▁', 'कर', 'ो']
+  ✓ Verb (Imperative (आज्ञार्थ)): जाओ
+      Tokens: ['▁', 'जा', 'ओ']
+      Tokens: ['▁', 'जा', 'ओ']
+  ✓ Verb (Imperative (आज्ञार्थ)): खाओ
+      Tokens: ['▁', 'खा', 'ओ']
+      Tokens: ['▁', 'खा', 'ओ']
+  ✓ Verb (Imperative (आज्ञार्थ)): कीजिए
+      Tokens: ['▁', 'क', 'ीजिए']
+      Tokens: ['▁', 'क', 'ीजिए']
+  ✓ Verb (Imperative (आज्ञार्थ)): जाइए
+      Tokens: ['▁', 'जा', 'इए']
+      Tokens: ['▁', 'जा', 'इए']
+  ✓ Verb (Imperative (आज्ञार्थ)): बैठिए
+      Tokens: ['▁बैठ', 'िए']
+      Tokens: ['▁बैठ', 'िए']
+  ✓ Verb (Compound Verbs (संयुक्त क्रिया)): कर लिया
+      Tokens: ['▁', 'कर', '▁लि', 'या']
+      Tokens: ['▁', 'कर', '▁लि', 'या']
+  ✓ Verb (Compound Verbs (संयुक्त क्रिया)): खा लिया
+      Tokens: ['▁', 'खा', '▁लि', 'या']
+      Tokens: ['▁', 'खा', '▁लि', 'या']
+  ✓ Verb (Compound Verbs (संयुक्त क्रिया)): जा सकता
+      Tokens: ['▁', 'जा', '▁', 'सकता']
+      Tokens: ['▁', 'जा', '▁', 'सकता']
+  ✓ Verb (Compound Verbs (संयुक्त क्रिया)): कर दिया
+      Tokens: ['▁', 'कर', '▁दि', 'या']
+      Tokens: ['▁', 'कर', '▁दि', 'या']
+  ✓ Verb (Compound Verbs (संयुक्त क्रिया)): लिख दिया
+      Tokens: ['▁लिख', '▁दि', 'या']
+      Tokens: ['▁लिख', '▁दि', 'या']
+  ✓ Verb (Compound Verbs (संयुक्त क्रिया)): पढ़ सकता
+      Tokens: ['▁पढ़', '▁', 'सकता']
+      Tokens: ['▁पढ़', '▁', 'सकता']
+  ✓ Verb (Completive Aspect): हो चुका
+      Tokens: ['▁', 'हो', '▁', 'चुका']
+      Tokens: ['▁', 'हो', '▁', 'चुका']
+  ✓ Verb (Completive Aspect): खा चुका
+      Tokens: ['▁', 'खा', '▁', 'चुका']
+      Tokens: ['▁', 'खा', '▁', 'चुका']
+  ✓ Verb (Completive Aspect): जा चुका
+      Tokens: ['▁', 'जा', '▁', 'चुका']
+      Tokens: ['▁', 'जा', '▁', 'चुका']
+  ✓ Verb (Completive Aspect): कर चुकी
+      Tokens: ['▁', 'कर', '▁', 'चुकी']
+      Tokens: ['▁', 'कर', '▁', 'चुकी']
+  ✓ Verb (Completive Aspect): पढ़ चुके
+      Tokens: ['▁पढ़', '▁', 'चुके']
+      Tokens: ['▁पढ़', '▁', 'चुके']
+
+  Category Result: 46/52 passed (88.5%)
+
+──────────────────────────────────────────────────────────────────────
+Testing: Noun Morphology (संज्ञा रूप)
+──────────────────────────────────────────────────────────────────────
+  ✓ Noun (Simple Postpositions (सरल परसर्ग)): राम का घर
+      Tokens: ['▁', 'राम', '▁', 'का', '▁घर']
+      Marker: का, Tokens: ['▁', 'राम', '▁', 'का', '▁घर']
+  ✓ Noun (Simple Postpositions (सरल परसर्ग)): सीता की किताब
+      Tokens: ['▁', 'सी', 'ता', '▁', 'की', '▁', 'कि', 'ता', 'ब']
+      Marker: की, Tokens: ['▁', 'सी', 'ता', '▁', 'की', '▁', 'कि', 'ता', 'ब']
+  ✓ Noun (Simple Postpositions (सरल परसर्ग)): बच्चों के खिलौने
+      Tokens: ['▁', 'ब', 'च्च', 'ों', '▁', 'के', '▁खि', 'लौ', 'ने']
+      Marker: के, Tokens: ['▁', 'ब', 'च्च', 'ों', '▁', 'के', '▁खि', 'लौ', 'ने']
+  ✓ Noun (Simple Postpositions (सरल परसर्ग)): मुझे पानी दो
+      Tokens: ['▁', 'मुझ', 'े', '▁', 'पा', 'नी', '▁', 'दो']
+      Marker: को implied, Tokens: ['▁', 'मुझ', 'े', '▁', 'पा', 'नी', '▁', 'दो']
+  ✓ Noun (Simple Postpositions (सरल परसर्ग)): दिल्ली से मुंबई
+      Tokens: ['▁दि', 'ल्ल', 'ी', '▁', 'से', '▁', 'मुंबई']
+      Marker: से, Tokens: ['▁दि', 'ल्ल', 'ी', '▁', 'से', '▁', 'मुंबई']
+  ✓ Noun (Simple Postpositions (सरल परसर्ग)): घर में बैठो
+      Tokens: ['▁घर', '▁', 'में', '▁बैठ', 'ो']
+      Marker: में, Tokens: ['▁घर', '▁', 'में', '▁बैठ', 'ो']
+  ✓ Noun (Simple Postpositions (सरल परसर्ग)): मेज पर रखो
+      Tokens: ['▁', 'मे', 'ज', '▁', 'पर', '▁', 'रख', 'ो']
+      Marker: पर, Tokens: ['▁', 'मे', 'ज', '▁', 'पर', '▁', 'रख', 'ो']
+  ✓ Noun (Compound Postpositions (संयुक्त परसर्ग)): मेरे लिए
+      Tokens: ['▁', 'मेरे', '▁', 'ल', 'िए']
+      Marker: के लिए, Tokens: ['▁', 'मेरे', '▁', 'ल', 'िए']
+  ✓ Noun (Compound Postpositions (संयुक्त परसर्ग)): उसके साथ
+      Tokens: ['▁', 'उसके', '▁साथ']
+      Marker: के साथ, Tokens: ['▁', 'उसके', '▁साथ']
+  ✓ Noun (Compound Postpositions (संयुक्त परसर्ग)): इसके बारे में
+      Tokens: ['▁', 'इसके', '▁बारे', '▁', 'में']
+      Marker: के बारे में, Tokens: ['▁', 'इसके', '▁बारे', '▁', 'में']
+  ✓ Noun (Compound Postpositions (संयुक्त परसर्ग)): उसके बाद
+      Tokens: ['▁', 'उसके', '▁बाद']
+      Marker: के बाद, Tokens: ['▁', 'उसके', '▁बाद']
+  ✓ Noun (Compound Postpositions (संयुक्त परसर्ग)): इससे पहले
+      Tokens: ['▁', 'इस', 'से', '▁पह', 'ले']
+      Marker: से पहले, Tokens: ['▁', 'इस', 'से', '▁पह', 'ले']
+  ✓ Noun (Compound Postpositions (संयुक्त परसर्ग)): घर के अंदर
+      Tokens: ['▁घर', '▁', 'के', '▁अंदर']
+      Marker: के अंदर, Tokens: ['▁घर', '▁', 'के', '▁अंदर']
+  ✓ Noun (Compound Postpositions (संयुक्त परसर्ग)): मेज के ऊपर
+      Tokens: ['▁', 'मे', 'ज', '▁', 'के', '▁ऊ', 'पर']
+      Marker: के ऊपर, Tokens: ['▁', 'मे', 'ज', '▁', 'के', '▁ऊ', 'पर']
+  ✓ Noun (Compound Postpositions (संयुक्त परसर्ग)): पेड़ के नीचे
+      Tokens: ['▁पेड़', '▁', 'के', '▁', 'नी', 'चे']
+      Marker: के नीचे, Tokens: ['▁पेड़', '▁', 'के', '▁', 'नी', 'चे']
+  ✓ Noun (Plural Markers (बहुवचन)): लड़का → लड़के
+      Tokens: ['▁लड़', 'का', '▁', '<0xE2>', '<0x86>', '<0x92>', '▁लड़', 'के']
+      Marker: े, Tokens: ['▁लड़', 'का', '▁', '<0xE2>', '<0x86>', '<0x92>', '▁लड़', 'के']
+  ✓ Noun (Plural Markers (बहुवचन)): लड़की → लड़कियाँ
+      Tokens: ['▁लड़', 'की', '▁', '<0xE2>', '<0x86>', '<0x92>', '▁लड़', 'कि', 'याँ']
+      Marker: ियाँ, Tokens: ['▁लड़', 'की', '▁', '<0xE2>', '<0x86>', '<0x92>', '▁लड़', 'कि', 'याँ']
+  ✗ Noun (Plural Markers (बहुवचन)): किताब → किताबें
+      Tokens: ['▁', 'कि', 'ता', 'ब', '▁', '<0xE2>', '<0x86>', '<0x92>', '▁', 'कि', 'ता', 'ब', 'ें']
+      Marker: ें, Tokens: ['▁', 'कि', 'ता', 'ब', '▁', '<0xE2>', '<0x86>', '<0x92>', '▁', 'कि', 'ता', 'ब', 'ें']
+  ✓ Noun (Plural Markers (बहुवचन)): कमरा → कमरे
+      Tokens: ['▁कमरा', '▁', '<0xE2>', '<0x86>', '<0x92>', '▁कमरे']
+      Marker: े, Tokens: ['▁कमरा', '▁', '<0xE2>', '<0x86>', '<0x92>', '▁कमरे']
+  ✗ Noun (Plural Markers (बहुवचन)): गाड़ी → गाड़ियाँ
+      Tokens: ['▁', 'गा', 'ड़ी', '▁', '<0xE2>', '<0x86>', '<0x92>', '▁', 'गा', 'ड़', 'ियाँ']
+      Marker: ियाँ, Tokens: ['▁', 'गा', 'ड़ी', '▁', '<0xE2>', '<0x86>', '<0x92>', '▁', 'गा', 'ड़', 'ियाँ']
+  ✓ Noun (Abstract Noun Suffixes (भाववाचक प्रत्यय)): मनुष्यता
+      Tokens: ['▁मनु', 'ष्य', 'ता']
+      Marker: ता, Tokens: ['▁मनु', 'ष्य', 'ता']
+  ✓ Noun (Abstract Noun Suffixes (भाववाचक प्रत्यय)): बचपन
+      Tokens: ['▁बच', 'पन']
+      Marker: पन, Tokens: ['▁बच', 'पन']
+  ✓ Noun (Abstract Noun Suffixes (भाववाचक प्रत्यय)): लड़कपन
+      Tokens: ['▁लड़', 'क', 'पन']
+      Marker: पन, Tokens: ['▁लड़', 'क', 'पन']
+  ✓ Noun (Abstract Noun Suffixes (भाववाचक प्रत्यय)): मिठास
+      Tokens: ['▁मिठा', 'स']
+      Marker: आस, Tokens: ['▁मिठा', 'स']
+  ✓ Noun (Abstract Noun Suffixes (भाववाचक प्रत्यय)): गर्मी
+      Tokens: ['▁गर्मी']
+      Marker: ी, Tokens: ['▁गर्मी']
+  ✓ Noun (Abstract Noun Suffixes (भाववाचक प्रत्यय)): बुराई
+      Tokens: ['▁', 'बुर', 'ाई']
+      Marker: आई, Tokens: ['▁', 'बुर', 'ाई']
+  ✓ Noun (Abstract Noun Suffixes (भाववाचक प्रत्यय)): मनुष्यत्व
+      Tokens: ['▁मनु', 'ष्य', 'त्व']
+      Marker: त्व, Tokens: ['▁मनु', 'ष्य', 'त्व']
+  ✓ Noun (Agent Suffixes (कर्तृवाचक प्रत्यय)): दूधवाला
+      Tokens: ['▁दूध', 'वाला']
+      Marker: वाला, Tokens: ['▁दूध', 'वाला']
+  ✗ Noun (Agent Suffixes (कर्तृवाचक प्रत्यय)): सब्जीवाली
+      Tokens: ['▁', 'स', 'ब्ज', 'ी', 'वाली']
+      Marker: वाली, Tokens: ['▁', 'स', 'ब्ज', 'ी', 'वाली']
+  ✗ Noun (Agent Suffixes (कर्तृवाचक प्रत्यय)): पानीवाले
+      Tokens: ['▁', 'पा', 'नी', 'वाले']
+      Marker: वाले, Tokens: ['▁', 'पा', 'नी', 'वाले']
+  ✗ Noun (Agent Suffixes (कर्तृवाचक प्रत्यय)): चित्रकार
+      Tokens: ['▁', 'चि', 'त्र', 'कार']
+      Marker: कार, Tokens: ['▁', 'चि', 'त्र', 'कार']
+  ✗ Noun (Agent Suffixes (कर्तृवाचक प्रत्यय)): दुकानदार
+      Tokens: ['▁', 'दु', 'का', 'न', 'दार']
+      Marker: दार, Tokens: ['▁', 'दु', 'का', 'न', 'दार']
+
+  Category Result: 26/32 passed (81.2%)
+
+──────────────────────────────────────────────────────────────────────
+Testing: Pronouns (सर्वनाम)
+──────────────────────────────────────────────────────────────────────
+  ✓ Pronoun (First Person (उत्तम पुरुष)/singular): मैं
+      Tokens: ['▁', 'मैं']
+      Tokens: ['▁', 'मैं']
+  ✗ Pronoun (First Person (उत्तम पुरुष)/singular): मुझे
+      Tokens: ['▁', 'मुझ', 'े']
+      Tokens: ['▁', 'मुझ', 'े']
+  ✗ Pronoun (First Person (उत्तम पुरुष)/singular): मुझको
+      Tokens: ['▁', 'मुझ', 'को']
+      Tokens: ['▁', 'मुझ', 'को']
+  ✓ Pronoun (First Person (उत्तम पुरुष)/singular): मेरा
+      Tokens: ['▁', 'मेरा']
+      Tokens: ['▁', 'मेरा']
+  ✓ Pronoun (First Person (उत्तम पुरुष)/singular): मेरी
+      Tokens: ['▁', 'मेरी']
+      Tokens: ['▁', 'मेरी']
+  ✓ Pronoun (First Person (उत्तम पुरुष)/singular): मेरे
+      Tokens: ['▁', 'मेरे']
+      Tokens: ['▁', 'मेरे']
+  ✓ Pronoun (First Person (उत्तम पुरुष)/plural): हम
+      Tokens: ['▁', 'हम']
+      Tokens: ['▁', 'हम']
+  ✓ Pronoun (First Person (उत्तम पुरुष)/plural): हमें
+      Tokens: ['▁', 'हमें']
+      Tokens: ['▁', 'हमें']
+  ✗ Pronoun (First Person (उत्तम पुरुष)/plural): हमको
+      Tokens: ['▁', 'हम', 'को']
+      Tokens: ['▁', 'हम', 'को']
+  ✓ Pronoun (First Person (उत्तम पुरुष)/plural): हमारा
+      Tokens: ['▁', 'हमारा']
+      Tokens: ['▁', 'हमारा']
+  ✓ Pronoun (First Person (उत्तम पुरुष)/plural): हमारी
+      Tokens: ['▁', 'हमारी']
+      Tokens: ['▁', 'हमारी']
+  ✓ Pronoun (First Person (उत्तम पुरुष)/plural): हमारे
+      Tokens: ['▁', 'हमारे']
+      Tokens: ['▁', 'हमारे']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/informal): तू
+      Tokens: ['▁', 'तू']
+      Tokens: ['▁', 'तू']
+  ✗ Pronoun (Second Person (मध्यम पुरुष)/informal): तुझे
+      Tokens: ['▁', 'तुझ', 'े']
+      Tokens: ['▁', 'तुझ', 'े']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/informal): तेरा
+      Tokens: ['▁', 'तेरा']
+      Tokens: ['▁', 'तेरा']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/informal): तेरी
+      Tokens: ['▁', 'तेरी']
+      Tokens: ['▁', 'तेरी']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/informal): तेरे
+      Tokens: ['▁', 'तेरे']
+      Tokens: ['▁', 'तेरे']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/familiar): तुम
+      Tokens: ['▁', 'तुम']
+      Tokens: ['▁', 'तुम']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/familiar): तुम्हें
+      Tokens: ['▁', 'तुम्हें']
+      Tokens: ['▁', 'तुम्हें']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/familiar): तुम्हारा
+      Tokens: ['▁', 'तुम्हारा']
+      Tokens: ['▁', 'तुम्हारा']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/familiar): तुम्हारी
+      Tokens: ['▁', 'तुम्हारी']
+      Tokens: ['▁', 'तुम्हारी']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/familiar): तुम्हारे
+      Tokens: ['▁', 'तुम्हारे']
+      Tokens: ['▁', 'तुम्हारे']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/formal): आप
+      Tokens: ['▁', 'आप']
+      Tokens: ['▁', 'आप']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/formal): आपको
+      Tokens: ['▁', 'आपको']
+      Tokens: ['▁', 'आपको']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/formal): आपका
+      Tokens: ['▁', 'आपका']
+      Tokens: ['▁', 'आपका']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/formal): आपकी
+      Tokens: ['▁', 'आपकी']
+      Tokens: ['▁', 'आपकी']
+  ✓ Pronoun (Second Person (मध्यम पुरुष)/formal): आपके
+      Tokens: ['▁', 'आपके']
+      Tokens: ['▁', 'आपके']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/proximal): यह
+      Tokens: ['▁', 'यह']
+      Tokens: ['▁', 'यह']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/proximal): इसे
+      Tokens: ['▁', 'इसे']
+      Tokens: ['▁', 'इसे']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/proximal): इसका
+      Tokens: ['▁', 'इसका']
+      Tokens: ['▁', 'इसका']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/proximal): इसकी
+      Tokens: ['▁', 'इसकी']
+      Tokens: ['▁', 'इसकी']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/proximal): इसके
+      Tokens: ['▁', 'इसके']
+      Tokens: ['▁', 'इसके']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/proximal): इसमें
+      Tokens: ['▁', 'इसमें']
+      Tokens: ['▁', 'इसमें']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/distal): वह
+      Tokens: ['▁', 'वह']
+      Tokens: ['▁', 'वह']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/distal): उसे
+      Tokens: ['▁', 'उसे']
+      Tokens: ['▁', 'उसे']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/distal): उसका
+      Tokens: ['▁', 'उसका']
+      Tokens: ['▁', 'उसका']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/distal): उसकी
+      Tokens: ['▁', 'उसकी']
+      Tokens: ['▁', 'उसकी']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/distal): उसके
+      Tokens: ['▁', 'उसके']
+      Tokens: ['▁', 'उसके']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/distal): उसमें
+      Tokens: ['▁', 'उसमें']
+      Tokens: ['▁', 'उसमें']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/proximal_plural): ये
+      Tokens: ['▁', 'ये']
+      Tokens: ['▁', 'ये']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/proximal_plural): इन्हें
+      Tokens: ['▁', 'इन्हें']
+      Tokens: ['▁', 'इन्हें']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/proximal_plural): इनका
+      Tokens: ['▁', 'इनका']
+      Tokens: ['▁', 'इनका']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/proximal_plural): इनकी
+      Tokens: ['▁', 'इनकी']
+      Tokens: ['▁', 'इनकी']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/proximal_plural): इनके
+      Tokens: ['▁', 'इनके']
+      Tokens: ['▁', 'इनके']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/distal_plural): वे
+      Tokens: ['▁', 'वे']
+      Tokens: ['▁', 'वे']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/distal_plural): उन्हें
+      Tokens: ['▁', 'उन्हें']
+      Tokens: ['▁', 'उन्हें']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/distal_plural): उनका
+      Tokens: ['▁', 'उनका']
+      Tokens: ['▁', 'उनका']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/distal_plural): उनकी
+      Tokens: ['▁', 'उनकी']
+      Tokens: ['▁', 'उनकी']
+  ✓ Pronoun (Third Person (अन्य पुरुष)/distal_plural): उनके
+      Tokens: ['▁', 'उनके']
+      Tokens: ['▁', 'उनके']
+  ✓ Pronoun (Interrogative (प्रश्नवाचक)/forms): कौन
+      Tokens: ['▁', 'कौन']
+      Tokens: ['▁', 'कौन']
+  ✓ Pronoun (Interrogative (प्रश्नवाचक)/forms): क्या
+      Tokens: ['▁', 'क्या']
+      Tokens: ['▁', 'क्या']
+  ✓ Pronoun (Interrogative (प्रश्नवाचक)/forms): कहाँ
+      Tokens: ['▁', 'कहाँ']
+      Tokens: ['▁', 'कहाँ']
+  ✓ Pronoun (Interrogative (प्रश्नवाचक)/forms): कब
+      Tokens: ['▁', 'कब']
+      Tokens: ['▁', 'कब']
+  ✓ Pronoun (Interrogative (प्रश्नवाचक)/forms): कैसे
+      Tokens: ['▁', 'कैसे']
+      Tokens: ['▁', 'कैसे']
+  ✓ Pronoun (Interrogative (प्रश्नवाचक)/forms): क्यों
+      Tokens: ['▁', 'क्यों']
+      Tokens: ['▁', 'क्यों']
+  ✓ Pronoun (Interrogative (प्रश्नवाचक)/forms): कितना
+      Tokens: ['▁', 'कितना']
+      Tokens: ['▁', 'कितना']
+  ✓ Pronoun (Interrogative (प्रश्नवाचक)/forms): कितनी
+      Tokens: ['▁', 'कितनी']
+      Tokens: ['▁', 'कितनी']
+  ✓ Pronoun (Interrogative (प्रश्नवाचक)/forms): कितने
+      Tokens: ['▁', 'कितने']
+      Tokens: ['▁', 'कितने']
+  ✓ Pronoun (Relative (संबंधवाचक)/forms): जो
+      Tokens: ['▁', 'जो']
+      Tokens: ['▁', 'जो']
+  ✓ Pronoun (Relative (संबंधवाचक)/forms): जिसे
+      Tokens: ['▁', 'जिसे']
+      Tokens: ['▁', 'जिसे']
+  ✓ Pronoun (Relative (संबंधवाचक)/forms): जिसका
+      Tokens: ['▁', 'जिसका']
+      Tokens: ['▁', 'जिसका']
+  ✓ Pronoun (Relative (संबंधवाचक)/forms): जिसकी
+      Tokens: ['▁', 'जिसकी']
+      Tokens: ['▁', 'जिसकी']
+  ✓ Pronoun (Relative (संबंधवाचक)/forms): जिसके
+      Tokens: ['▁', 'जिसके']
+      Tokens: ['▁', 'जिसके']
+  ✓ Pronoun (Relative (संबंधवाचक)/forms): जिसमें
+      Tokens: ['▁', 'जिसमें']
+      Tokens: ['▁', 'जिसमें']
+  ✓ Pronoun (Reflexive (निजवाचक)/forms): अपना
+      Tokens: ['▁', 'अपना']
+      Tokens: ['▁', 'अपना']
+  ✓ Pronoun (Reflexive (निजवाचक)/forms): अपनी
+      Tokens: ['▁', 'अपनी']
+      Tokens: ['▁', 'अपनी']
+  ✓ Pronoun (Reflexive (निजवाचक)/forms): अपने
+      Tokens: ['▁', 'अपने']
+      Tokens: ['▁', 'अपने']
+  ✓ Pronoun (Reflexive (निजवाचक)/forms): खुद
+      Tokens: ['▁', 'खुद']
+      Tokens: ['▁', 'खुद']
+  ✗ Pronoun (Reflexive (निजवाचक)/forms): स्वयं
+      Tokens: ['▁', 'स्व', 'यं']
+      Tokens: ['▁', 'स्व', 'यं']
+
+  Category Result: 64/69 passed (92.8%)
+
+──────────────────────────────────────────────────────────────────────
+Testing: Numbers (संख्याएँ)
+──────────────────────────────────────────────────────────────────────
+  ✓ Number (Cardinals (गणना संख्या)): एक
+      Tokens: ['▁', 'एक']
+      Tokens: ['▁', 'एक']
+  ✓ Number (Cardinals (गणना संख्या)): दो
+      Tokens: ['▁', 'दो']
+      Tokens: ['▁', 'दो']
+  ✓ Number (Cardinals (गणना संख्या)): तीन
+      Tokens: ['▁', 'तीन']
+      Tokens: ['▁', 'तीन']
+  ✓ Number (Cardinals (गणना संख्या)): चार
+      Tokens: ['▁', 'चार']
+      Tokens: ['▁', 'चार']
+  ✓ Number (Cardinals (गणना संख्या)): पाँच
+      Tokens: ['▁', 'पाँच']
+      Tokens: ['▁', 'पाँच']
+  ✓ Number (Cardinals (गणना संख्या)): छह
+      Tokens: ['▁', 'छह']
+      Tokens: ['▁', 'छह']
+  ✓ Number (Cardinals (गणना संख्या)): सात
+      Tokens: ['▁', 'सात']
+      Tokens: ['▁', 'सात']
+  ✓ Number (Cardinals (गणना संख्या)): आठ
+      Tokens: ['▁', 'आठ']
+      Tokens: ['▁', 'आठ']
+  ✓ Number (Cardinals (गणना संख्या)): नौ
+      Tokens: ['▁', 'नौ']
+      Tokens: ['▁', 'नौ']
+  ✓ Number (Cardinals (गणना संख्या)): दस
+      Tokens: ['▁', 'दस']
+      Tokens: ['▁', 'दस']
+  ✓ Number (Cardinals (गणना संख्या)): ग्यारह
+      Tokens: ['▁', 'ग्यारह']
+      Tokens: ['▁', 'ग्यारह']
+  ✓ Number (Cardinals (गणना संख्या)): बारह
+      Tokens: ['▁', 'बारह']
+      Tokens: ['▁', 'बारह']
+  ✓ Number (Cardinals (गणना संख्या)): तेरह
+      Tokens: ['▁', 'तेरह']
+      Tokens: ['▁', 'तेरह']
+  ✓ Number (Cardinals (गणना संख्या)): चौदह
+      Tokens: ['▁', 'चौदह']
+      Tokens: ['▁', 'चौदह']
+  ✓ Number (Cardinals (गणना संख्या)): पंद्रह
+      Tokens: ['▁', 'पंद्रह']
+      Tokens: ['▁', 'पंद्रह']
+  ✓ Number (Cardinals (गणना संख्या)): सोलह
+      Tokens: ['▁', 'सोलह']
+      Tokens: ['▁', 'सोलह']
+  ✓ Number (Cardinals (गणना संख्या)): सत्रह
+      Tokens: ['▁', 'सत्रह']
+      Tokens: ['▁', 'सत्रह']
+  ✓ Number (Cardinals (गणना संख्या)): अठारह
+      Tokens: ['▁', 'अठारह']
+      Tokens: ['▁', 'अठारह']
+  ✓ Number (Cardinals (गणना संख्या)): उन्नीस
+      Tokens: ['▁', 'उन्नीस']
+      Tokens: ['▁', 'उन्नीस']
+  ✓ Number (Cardinals (गणना संख्या)): बीस
+      Tokens: ['▁', 'बीस']
+      Tokens: ['▁', 'बीस']
+  ✗ Number (Cardinals (गणना संख्या)): इक्कीस
+      Tokens: ['▁', 'इ', 'क्क', 'ी', 'स']
+      Tokens: ['▁', 'इ', 'क्क', 'ी', 'स']
+  ✗ Number (Cardinals (गणना संख्या)): बाईस
+      Tokens: ['▁', 'ब', 'ाई', 'स']
+      Tokens: ['▁', 'ब', 'ाई', 'स']
+  ✗ Number (Cardinals (गणना संख्या)): तेईस
+      Tokens: ['▁', 'ते', 'ई', 'स']
+      Tokens: ['▁', 'ते', 'ई', 'स']
+  ✓ Number (Cardinals (गणना संख्या)): चौबीस
+      Tokens: ['▁चौ', 'बीस']
+      Tokens: ['▁चौ', 'बीस']
+  ✗ Number (Cardinals (गणना संख्या)): पच्चीस
+      Tokens: ['▁', 'प', 'च्च', 'ी', 'स']
+      Tokens: ['▁', 'प', 'च्च', 'ी', 'स']
+  ✗ Number (Cardinals (गणना संख्या)): तीस
+      Tokens: ['▁', 'ती', 'स']
+      Tokens: ['▁', 'ती', 'स']
+  ✗ Number (Cardinals (गणना संख्या)): चालीस
+      Tokens: ['▁चाल', 'ी', 'स']
+      Tokens: ['▁चाल', 'ी', 'स']
+  ✗ Number (Cardinals (गणना संख्या)): पचास
+      Tokens: ['▁', 'प', 'च', 'ास']
+      Tokens: ['▁', 'प', 'च', 'ास']
+  ✓ Number (Cardinals (गणना संख्या)): साठ
+      Tokens: ['▁साठ']
+      Tokens: ['▁साठ']
+  ✗ Number (Cardinals (गणना संख्या)): सत्तर
+      Tokens: ['▁', 'स', 'त्त', 'र']
+      Tokens: ['▁', 'स', 'त्त', 'र']
+  ✓ Number (Cardinals (गणना संख्या)): अस्सी
+      Tokens: ['▁अस्सी']
+      Tokens: ['▁अस्सी']
+  ✗ Number (Cardinals (गणना संख्या)): नब्बे
+      Tokens: ['▁', 'न', 'ब्ब', 'े']
+      Tokens: ['▁', 'न', 'ब्ब', 'े']
+  ✓ Number (Cardinals (गणना संख्या)): सौ
+      Tokens: ['▁', 'सौ']
+      Tokens: ['▁', 'सौ']
+  ✓ Number (Large Numbers (बड़ी संख्याएँ)): हज़ार
+      Tokens: ['▁', 'हज़ार']
+      Tokens: ['▁', 'हज़ार']
+  ✓ Number (Large Numbers (बड़ी संख्याएँ)): लाख
+      Tokens: ['▁', 'लाख']
+      Tokens: ['▁', 'लाख']
+  ✓ Number (Large Numbers (बड़ी संख्याएँ)): करोड़
+      Tokens: ['▁', 'करोड़']
+      Tokens: ['▁', 'करोड़']
+  ✓ Number (Large Numbers (बड़ी संख्याएँ)): अरब
+      Tokens: ['▁', 'अरब']
+      Tokens: ['▁', 'अरब']
+  ✗ Number (Large Numbers (बड़ी संख्याएँ)): खरब
+      Tokens: ['▁', 'ख', 'र', 'ब']
+      Tokens: ['▁', 'ख', 'र', 'ब']
+  ✓ Number (Ordinals (क्रमवाचक)): पहला
+      Tokens: ['▁', 'पहला']
+      Tokens: ['▁', 'पहला']
+  ✓ Number (Ordinals (क्रमवाचक)): दूसरा
+      Tokens: ['▁', 'दूसरा']
+      Tokens: ['▁', 'दूसरा']
+  ✓ Number (Ordinals (क्रमवाचक)): तीसरा
+      Tokens: ['▁', 'तीसरा']
+      Tokens: ['▁', 'तीसरा']
+  ✓ Number (Ordinals (क्रमवाचक)): चौथा
+      Tokens: ['▁', 'चौथा']
+      Tokens: ['▁', 'चौथा']
+  ✓ Number (Ordinals (क्रमवाचक)): पाँचवाँ
+      Tokens: ['▁', 'पाँचवाँ']
+      Tokens: ['▁', 'पाँचवाँ']
+  ✓ Number (Ordinals (क्रमवाचक)): पहली
+      Tokens: ['▁', 'पहली']
+      Tokens: ['▁', 'पहली']
+  ✓ Number (Ordinals (क्रमवाचक)): दूसरी
+      Tokens: ['▁', 'दूसरी']
+      Tokens: ['▁', 'दूसरी']
+  ✓ Number (Ordinals (क्रमवाचक)): तीसरी
+      Tokens: ['▁', 'तीसरी']
+      Tokens: ['▁', 'तीसरी']
+  ✓ Number (Ordinals (क्रमवाचक)): चौथी
+      Tokens: ['▁', 'चौथी']
+      Tokens: ['▁', 'चौथी']
+  ✓ Number (Ordinals (क्रमवाचक)): पाँचवीं
+      Tokens: ['▁', 'पाँचवीं']
+      Tokens: ['▁', 'पाँचवीं']
+  ✓ Number (Ordinals (क्रमवाचक)): पहले
+      Tokens: ['▁पह', 'ले']
+      Tokens: ['▁पह', 'ले']
+  ✓ Number (Ordinals (क्रमवाचक)): दूसरे
+      Tokens: ['▁दूसरे']
+      Tokens: ['▁दूसरे']
+  ✗ Number (Ordinals (क्रमवाचक)): तीसरे
+      Tokens: ['▁', 'ती', 'सरे']
+      Tokens: ['▁', 'ती', 'सरे']
+  ✓ Number (Ordinals (क्रमवाचक)): चौथे
+      Tokens: ['▁चौ', 'थे']
+      Tokens: ['▁चौ', 'थे']
+  ✗ Number (Ordinals (क्रमवाचक)): पाँचवें
+      Tokens: ['▁', 'पाँच', 'वे', 'ं']
+      Tokens: ['▁', 'पाँच', 'वे', 'ं']
+
+  Category Result: 41/53 passed (77.4%)
+
+──────────────────────────────────────────────────────────────────────
+Testing: Prefixes/Suffixes (उपसर्ग/प्रत्यय)
+──────────────────────────────────────────────────────────────────────
+  ✓ Prefix (अ (negation)): अज्ञान
+      Tokens: ['▁अ', 'ज्ञ', 'ान']
+      Tokens: ['▁अ', 'ज्ञ', 'ान']
+  ✓ Prefix (अ (negation)): अधर्म
+      Tokens: ['▁', 'अध', 'र्म']
+      Tokens: ['▁', 'अध', 'र्म']
+  ✓ Prefix (अ (negation)): असत्य
+      Tokens: ['▁अस', 'त्य']
+      Tokens: ['▁अस', 'त्य']
+  ✓ Prefix (अ (negation)): अशांति
+      Tokens: ['▁अशांति']
+      Tokens: ['▁अशांति']
+  ✓ Prefix (अन (negation before vowel)): अनंत
+      Tokens: ['▁', 'अन', 'ंत']
+      Tokens: ['▁', 'अन', 'ंत']
+  ✓ Prefix (अन (negation before vowel)): अनादि
+      Tokens: ['▁', 'अन', 'ादि']
+      Tokens: ['▁', 'अन', 'ादि']
+  ✓ Prefix (अन (negation before vowel)): अनुचित
+      Tokens: ['▁', 'अनु', 'चित']
+      Tokens: ['▁', 'अनु', 'चित']
+  ✓ Prefix (अधि (over/above)): अधिकार
+      Tokens: ['▁', 'अधि', 'कार']
+      Tokens: ['▁', 'अधि', 'कार']
+  ✓ Prefix (अधि (over/above)): अधिपति
+      Tokens: ['▁', 'अधि', 'पति']
+      Tokens: ['▁', 'अधि', 'पति']
+  ✓ Prefix (अधि (over/above)): अध्यक्ष
+      Tokens: ['▁अ', 'ध्य', 'क्ष']
+      Tokens: ['▁अ', 'ध्य', 'क्ष']
+  ✓ Prefix (अनु (after/following)): अनुसार
+      Tokens: ['▁', 'अनु', 'सार']
+      Tokens: ['▁', 'अनु', 'सार']
+  ✓ Prefix (अनु (after/following)): अनुभव
+      Tokens: ['▁', 'अनु', 'भव']
+      Tokens: ['▁', 'अनु', 'भव']
+  ✓ Prefix (अनु (after/following)): अनुवाद
+      Tokens: ['▁', 'अनु', 'वाद']
+      Tokens: ['▁', 'अनु', 'वाद']
+  ✓ Prefix (अप (away/down)): अपमान
+      Tokens: ['▁', 'अप', 'मान']
+      Tokens: ['▁', 'अप', 'मान']
+  ✓ Prefix (अप (away/down)): अपकार
+      Tokens: ['▁', 'अप', 'कार']
+      Tokens: ['▁', 'अप', 'कार']
+  ✗ Prefix (अप (away/down)): अपशब्द
+      Tokens: ['▁', 'अप', 'श', 'ब्द']
+      Tokens: ['▁', 'अप', 'श', 'ब्द']
+  ✓ Prefix (अभि (towards)): अभिमान
+      Tokens: ['▁', 'अभि', 'मान']
+      Tokens: ['▁', 'अभि', 'मान']
+  ✓ Prefix (अभि (towards)): अभिनय
+      Tokens: ['▁', 'अभि', 'नय']
+      Tokens: ['▁', 'अभि', 'नय']
+  ✗ Prefix (अभि (towards)): अभिलाषा
+      Tokens: ['▁', 'अभि', 'ला', 'षा']
+      Tokens: ['▁', 'अभि', 'ला', 'षा']
+  ✓ Prefix (उप (sub/near)): उपकार
+      Tokens: ['▁', 'उप', 'कार']
+      Tokens: ['▁', 'उप', 'कार']
+  ✗ Prefix (उप (sub/near)): उपदेश
+      Tokens: ['▁', 'उप', 'दे', 'श']
+      Tokens: ['▁', 'उप', 'दे', 'श']
+  ✓ Prefix (उप (sub/near)): उपयोग
+      Tokens: ['▁', 'उप', 'योग']
+      Tokens: ['▁', 'उप', 'योग']
+  ✓ Prefix (दुर/दुस (bad/difficult)): दुर्गम
+      Tokens: ['▁', 'दुर', '्गम']
+      Tokens: ['▁', 'दुर', '्गम']
+  ✗ Prefix (दुर/दुस (bad/difficult)): दुर्भाग्य
+      Tokens: ['▁', 'दुर', '्भा', 'ग्य']
+      Tokens: ['▁', 'दुर', '्भा', 'ग्य']
+  ✗ Prefix (दुर/दुस (bad/difficult)): दुष्कर
+      Tokens: ['▁', 'दु', 'ष्क', 'र']
+      Tokens: ['▁', 'दु', 'ष्क', 'र']
+  ✗ Prefix (निर/निस (without)): निर्दोष
+      Tokens: ['▁', 'निर', '्', 'दो', 'ष']
+      Tokens: ['▁', 'निर', '्', 'दो', 'ष']
+  ✗ Prefix (निर/निस (without)): निर्मल
+      Tokens: ['▁', 'निर', '्म', 'ल']
+      Tokens: ['▁', 'निर', '्म', 'ल']
+  ✗ Prefix (निर/निस (without)): निस्संदेह
+      Tokens: ['▁', 'निस', '्', 'सं', 'दे', 'ह']
+      Tokens: ['▁', 'निस', '्', 'सं', 'दे', 'ह']
+  ✓ Prefix (परि (around)): परिवार
+      Tokens: ['▁', 'परि', 'वार']
+      Tokens: ['▁', 'परि', 'वार']
+  ✓ Prefix (परि (around)): परिचय
+      Tokens: ['▁', 'परि', 'चय']
+      Tokens: ['▁', 'परि', 'चय']
+  ✓ Prefix (परि (around)): परिणाम
+      Tokens: ['▁', 'परि', 'णाम']
+      Tokens: ['▁', 'परि', 'णाम']
+  ✓ Prefix (प्र (forward)): प्रगति
+      Tokens: ['▁', 'प्र', 'गति']
+      Tokens: ['▁', 'प्र', 'गति']
+  ✗ Prefix (प्र (forward)): प्रकाश
+      Tokens: ['▁', 'प्र', 'का', 'श']
+      Tokens: ['▁', 'प्र', 'का', 'श']
+  ✓ Prefix (प्र (forward)): प्रयोग
+      Tokens: ['▁', 'प्र', 'योग']
+      Tokens: ['▁', 'प्र', 'योग']
+  ✓ Prefix (प्रति (against/each)): प्रतिदिन
+      Tokens: ['▁', 'प्रति', 'दिन']
+      Tokens: ['▁', 'प्रति', 'दिन']
+  ✗ Prefix (प्रति (against/each)): प्रतिक्रिया
+      Tokens: ['▁', 'प्रति', 'क्र', 'ि', 'या']
+      Tokens: ['▁', 'प्रति', 'क्र', 'ि', 'या']
+  ✗ Prefix (प्रति (against/each)): प्रतिनिधि
+      Tokens: ['▁', 'प्रति', 'नि', 'धि']
+      Tokens: ['▁', 'प्रति', 'नि', 'धि']
+  ✓ Prefix (वि (apart/special)): विशेष
+      Tokens: ['▁', 'वि', 'शेष']
+      Tokens: ['▁', 'वि', 'शेष']
+  ✗ Prefix (वि (apart/special)): विकास
+      Tokens: ['▁', 'वि', 'का', 'स']
+      Tokens: ['▁', 'वि', 'का', 'स']
+  ✓ Prefix (वि (apart/special)): विचार
+      Tokens: ['▁', 'वि', 'चार']
+      Tokens: ['▁', 'वि', 'चार']
+  ✓ Prefix (सं/सम (together)): संगम
+      Tokens: ['▁', 'सं', 'गम']
+      Tokens: ['▁', 'सं', 'गम']
+  ✓ Prefix (सं/सम (together)): संयोग
+      Tokens: ['▁', 'सं', 'योग']
+      Tokens: ['▁', 'सं', 'योग']
+  ✓ Prefix (सं/सम (together)): समाज
+      Tokens: ['▁', 'सम', 'ाज']
+      Tokens: ['▁', 'सम', 'ाज']
+  ✓ Prefix (सु (good/well)): सुंदर
+      Tokens: ['▁', 'सु', 'ंदर']
+      Tokens: ['▁', 'सु', 'ंदर']
+  ✗ Prefix (सु (good/well)): सुविधा
+      Tokens: ['▁', 'सु', 'वि', 'धा']
+      Tokens: ['▁', 'सु', 'वि', 'धा']
+  ✗ Prefix (सु (good/well)): सुरक्षा
+      Tokens: ['▁', 'सु', 'र', 'क्ष', 'ा']
+      Tokens: ['▁', 'सु', 'र', 'क्ष', 'ा']
+  ✓ Suffix (ईय): भारतीय
+      Tokens: ['▁भारत', 'ीय']
+      Tokens: ['▁भारत', 'ीय']
+  ✗ Suffix (ईय): राष्ट्रीय
+      Tokens: ['▁रा', 'ष्ट', '्र', 'ीय']
+      Tokens: ['▁रा', 'ष्ट', '्र', 'ीय']
+  ✓ Suffix (ईय): जातीय
+      Tokens: ['▁', 'जाती', 'य']
+      Tokens: ['▁', 'जाती', 'य']
+  ✗ Suffix (इक): वैज्ञानिक
+      Tokens: ['▁वै', 'ज्ञ', 'ान', 'िक']
+      Tokens: ['▁वै', 'ज्ञ', 'ान', 'िक']
+  ✓ Suffix (इक): सामाजिक
+      Tokens: ['▁', 'सामाज', 'िक']
+      Tokens: ['▁', 'सामाज', 'िक']
+  ✓ Suffix (इक): ऐतिहासिक
+      Tokens: ['▁ऐ', 'तिहास', 'िक']
+      Tokens: ['▁ऐ', 'तिहास', 'िक']
+  ✓ Suffix (मय): आनंदमय
+      Tokens: ['▁आनंद', 'मय']
+      Tokens: ['▁आनंद', 'मय']
+  ✗ Suffix (मय): दुखमय
+      Tokens: ['▁', 'दु', 'ख', 'मय']
+      Tokens: ['▁', 'दु', 'ख', 'मय']
+  ✓ Suffix (मय): जलमय
+      Tokens: ['▁जल', 'मय']
+      Tokens: ['▁जल', 'मय']
+  ✓ Suffix (पूर्ण): सफलतापूर्ण
+      Tokens: ['▁सफल', 'ता', 'पूर्ण']
+      Tokens: ['▁सफल', 'ता', 'पूर्ण']
+  ✓ Suffix (पूर्ण): आशापूर्ण
+      Tokens: ['▁आ', 'शा', 'पूर्ण']
+      Tokens: ['▁आ', 'शा', 'पूर्ण']
+  ✗ Suffix (पूर्ण): प्रेमपूर्ण
+      Tokens: ['▁', 'प्र', 'ेम', 'पूर्ण']
+      Tokens: ['▁', 'प्र', 'ेम', 'पूर्ण']
+  ✓ Suffix (हीन): धनहीन
+      Tokens: ['▁धन', 'हीन']
+      Tokens: ['▁धन', 'हीन']
+  ✗ Suffix (हीन): बुद्धिहीन
+      Tokens: ['▁बु', 'द्ध', 'ि', 'हीन']
+      Tokens: ['▁बु', 'द्ध', 'ि', 'हीन']
+  ✓ Suffix (हीन): आशाहीन
+      Tokens: ['▁आ', 'शा', 'हीन']
+      Tokens: ['▁आ', 'शा', 'हीन']
+  ✗ Suffix (युक्त): बुद्धियुक्त
+      Tokens: ['▁बु', 'द्ध', 'ि', 'युक्त']
+      Tokens: ['▁बु', 'द्ध', 'ि', 'युक्त']
+  ✓ Suffix (युक्त): अर्थयुक्त
+      Tokens: ['▁अर्थ', 'युक्त']
+      Tokens: ['▁अर्थ', 'युक्त']
+  ✗ Suffix (युक्त): शक्तियुक्त
+      Tokens: ['▁', 'श', 'क्त', 'ि', 'युक्त']
+      Tokens: ['▁', 'श', 'क्त', 'ि', 'युक्त']
+  ✓ Suffix (वान/वती): बलवान
+      Tokens: ['▁', 'बल', 'वान']
+      Tokens: ['▁', 'बल', 'वान']
+  ✓ Suffix (वान/वती): धनवान
+      Tokens: ['▁धन', 'वान']
+      Tokens: ['▁धन', 'वान']
+  ✓ Suffix (वान/वती): गुणवती
+      Tokens: ['▁गुणव', 'ती']
+      Tokens: ['▁गुणव', 'ती']
+  ✗ Suffix (शील): दयाशील
+      Tokens: ['▁', 'द', 'या', 'शील']
+      Tokens: ['▁', 'द', 'या', 'शील']
+  ✗ Suffix (शील): कर्मशील
+      Tokens: ['▁', 'कर', '्म', 'शील']
+      Tokens: ['▁', 'कर', '्म', 'शील']
+  ✗ Suffix (शील): परिश्रमशील
+      Tokens: ['▁', 'परि', 'श्र', 'म', 'शील']
+      Tokens: ['▁', 'परि', 'श्र', 'म', 'शील']
+  ✗ Suffix (ता): सुंदरता
+      Tokens: ['▁', 'सु', 'ंदर', 'ता']
+      Tokens: ['▁', 'सु', 'ंदर', 'ता']
+  ✓ Suffix (ता): महानता
+      Tokens: ['▁महान', 'ता']
+      Tokens: ['▁महान', 'ता']
+  ✓ Suffix (ता): अच्छाई
+      Tokens: ['▁अ', 'च्छ', 'ाई']
+      Tokens: ['▁अ', 'च्छ', 'ाई']
+  ✓ Suffix (त्व): मनुष्यत्व
+      Tokens: ['▁मनु', 'ष्य', 'त्व']
+      Tokens: ['▁मनु', 'ष्य', 'त्व']
+  ✗ Suffix (त्व): देवत्व
+      Tokens: ['▁', 'दे', 'व', 'त्व']
+      Tokens: ['▁', 'दे', 'व', 'त्व']
+  ✗ Suffix (त्व): नेतृत्व
+      Tokens: ['▁', 'ने', 'तृ', 'त्व']
+      Tokens: ['▁', 'ने', 'तृ', 'त्व']
+  ✓ Suffix (पन/पना): बचपन
+      Tokens: ['▁बच', 'पन']
+      Tokens: ['▁बच', 'पन']
+  ✓ Suffix (पन/पना): लड़कपन
+      Tokens: ['▁लड़', 'क', 'पन']
+      Tokens: ['▁लड़', 'क', 'पन']
+  ✓ Suffix (पन/पना): अपनापन
+      Tokens: ['▁', 'अपना', 'पन']
+      Tokens: ['▁', 'अपना', 'पन']
+  ✓ Suffix (आई): लड़ाई
+      Tokens: ['▁लड़', 'ाई']
+      Tokens: ['▁लड़', 'ाई']
+  ✓ Suffix (आई): पढ़ाई
+      Tokens: ['▁पढ़', 'ाई']
+      Tokens: ['▁पढ़', 'ाई']
+  ✓ Suffix (आई): कमाई
+      Tokens: ['▁कम', 'ाई']
+      Tokens: ['▁कम', 'ाई']
+  ✓ Suffix (आव/आवट): बनावट
+      Tokens: ['▁बन', 'ावट']
+      Tokens: ['▁बन', 'ावट']
+  ✓ Suffix (आव/आवट): मिलावट
+      Tokens: ['▁मिल', 'ावट']
+      Tokens: ['▁मिल', 'ावट']
+  ✓ Suffix (आव/आवट): रुकावट
+      Tokens: ['▁रुक', 'ावट']
+      Tokens: ['▁रुक', 'ावट']
+  ✓ Suffix (आहट): घबराहट
+      Tokens: ['▁घबर', 'ाहट']
+      Tokens: ['▁घबर', 'ाहट']
+  ✗ Suffix (आहट): चिल्लाहट
+      Tokens: ['▁', 'चि', 'ल्ल', 'ाहट']
+      Tokens: ['▁', 'चि', 'ल्ल', 'ाहट']
+  ✗ Suffix (आहट): मुस्कराहट
+      Tokens: ['▁मु', 'स्क', 'र', 'ाहट']
+      Tokens: ['▁मु', 'स्क', 'र', 'ाहट']
+
+  Category Result: 59/88 passed (67.0%)
+
+──────────────────────────────────────────────────────────────────────
+Testing: Connectors (संयोजक)
+──────────────────────────────────────────────────────────────────────
+  ✓ Connector (Coordinating (समुच्चयबोधक)): और
+      Tokens: ['▁', 'और']
+      Tokens: ['▁', 'और']
+  ✓ Connector (Coordinating (समुच्चयबोधक)): तथा
+      Tokens: ['▁', 'तथा']
+      Tokens: ['▁', 'तथा']
+  ✓ Connector (Coordinating (समुच्चयबोधक)): एवं
+      Tokens: ['▁', 'एवं']
+      Tokens: ['▁', 'एवं']
+  ✓ Connector (Coordinating (समुच्चयबोधक)): या
+      Tokens: ['▁', 'या']
+      Tokens: ['▁', 'या']
+  ✓ Connector (Coordinating (समुच्चयबोधक)): अथवा
+      Tokens: ['▁', 'अथवा']
+      Tokens: ['▁', 'अथवा']
+  ✓ Connector (Coordinating (समुच्चयबोधक)): किंतु
+      Tokens: ['▁', 'किंतु']
+      Tokens: ['▁', 'किंतु']
+  ✓ Connector (Coordinating (समुच्चयबोधक)): परंतु
+      Tokens: ['▁', 'परंतु']
+      Tokens: ['▁', 'परंतु']
+  ✓ Connector (Coordinating (समुच्चयबोधक)): लेकिन
+      Tokens: ['▁', 'लेकिन']
+      Tokens: ['▁', 'लेकिन']
+  ✓ Connector (Coordinating (समुच्चयबोधक)): मगर
+      Tokens: ['▁', 'मगर']
+      Tokens: ['▁', 'मगर']
+  ✓ Connector (Subordinating (आश्रित)): कि
+      Tokens: ['▁', 'कि']
+      Tokens: ['▁', 'कि']
+  ✓ Connector (Subordinating (आश्रित)): जो
+      Tokens: ['▁', 'जो']
+      Tokens: ['▁', 'जो']
+  ✓ Connector (Subordinating (आश्रित)): जब
+      Tokens: ['▁', 'जब']
+      Tokens: ['▁', 'जब']
+  ✓ Connector (Subordinating (आश्रित)): तब
+      Tokens: ['▁', 'तब']
+      Tokens: ['▁', 'तब']
+  ✓ Connector (Subordinating (आश्रित)): यदि
+      Tokens: ['▁', 'यदि']
+      Tokens: ['▁', 'यदि']
+  ✓ Connector (Subordinating (आश्रित)): अगर
+      Tokens: ['▁', 'अगर']
+      Tokens: ['▁', 'अगर']
+  ✓ Connector (Subordinating (आश्रित)): तो
+      Tokens: ['▁', 'तो']
+      Tokens: ['▁', 'तो']
+  ✓ Connector (Subordinating (आश्रित)): क्योंकि
+      Tokens: ['▁', 'क्योंकि']
+      Tokens: ['▁', 'क्योंकि']
+  ✓ Connector (Subordinating (आश्रित)): इसलिए
+      Tokens: ['▁', 'इसलिए']
+      Tokens: ['▁', 'इसलिए']
+  ✓ Connector (Particles (निपात)): भी
+      Tokens: ['▁', 'भी']
+      Tokens: ['▁', 'भी']
+  ✓ Connector (Particles (निपात)): ही
+      Tokens: ['▁', 'ही']
+      Tokens: ['▁', 'ही']
+  ✓ Connector (Particles (निपात)): तो
+      Tokens: ['▁', 'तो']
+      Tokens: ['▁', 'तो']
+  ✓ Connector (Particles (निपात)): तक
+      Tokens: ['▁', 'तक']
+      Tokens: ['▁', 'तक']
+  ✓ Connector (Particles (निपात)): मात्र
+      Tokens: ['▁', 'मात्र']
+      Tokens: ['▁', 'मात्र']
+  ✓ Connector (Particles (निपात)): केवल
+      Tokens: ['▁', 'केवल']
+      Tokens: ['▁', 'केवल']
+  ✓ Connector (Particles (निपात)): सिर्फ
+      Tokens: ['▁', 'सिर्फ']
+      Tokens: ['▁', 'सिर्फ']
+  ✓ Connector (Negation (नकारात्मक)): न
+      Tokens: ['▁', 'न']
+      Tokens: ['▁', 'न']
+  ✓ Connector (Negation (नकारात्मक)): ना
+      Tokens: ['▁', 'ना']
+      Tokens: ['▁', 'ना']
+  ✓ Connector (Negation (नकारात्मक)): नहीं
+      Tokens: ['▁', 'नहीं']
+      Tokens: ['▁', 'नहीं']
+  ✓ Connector (Negation (नकारात्मक)): मत
+      Tokens: ['▁', 'मत']
+      Tokens: ['▁', 'मत']
+  ✓ Connector (Emphatic (बलार्थक)): जरूर
+      Tokens: ['▁', 'जरूर']
+      Tokens: ['▁', 'जरूर']
+  ✓ Connector (Emphatic (बलार्थक)): अवश्य
+      Tokens: ['▁', 'अवश्य']
+      Tokens: ['▁', 'अवश्य']
+  ✗ Connector (Emphatic (बलार्थक)): ज़रूर
+      Tokens: ['▁', 'ज़र', 'ूर']
+      Tokens: ['▁', 'ज़र', 'ूर']
+  ✗ Connector (Emphatic (बलार्थक)): बिल्कुल
+      Tokens: ['▁बि', 'ल्क', 'ुल']
+      Tokens: ['▁बि', 'ल्क', 'ुल']
+
+  Category Result: 31/33 passed (93.9%)
+
+──────────────────────────────────────────────────────────────────────
+Testing: Chat Template
+──────────────────────────────────────────────────────────────────────
+  ✓ Chat: Pure Hindi Conversation
+      Token count: 55
+  ✓ Chat: Hinglish Conversation
+      Token count: 101
+  ✓ Chat: Multi-turn Hindi
+      Token count: 130
+
+  Category Result: 3/3 passed (100.0%)
+
+──────────────────────────────────────────────────────────────────────
+Testing: Edge Cases
+──────────────────────────────────────────────────────────────────────
+  ✓ Edge: Empty string
+      Input: '', Tokens: 0
+  ✓ Edge: Single character
+      Tokens: ['▁अ']
+      Input: 'अ', Tokens: 1
+  ✓ Edge: Single matra
+      Tokens: ['▁', 'ा']
+      Input: 'ा', Tokens: 2
+  ✓ Edge: Punctuation
+      Tokens: ['▁', '।', ',', ';', ':', '!', '?']
+      Input: '।,;:!?', Tokens: 7
+  ✓ Edge: Numbers
+      Tokens: ['▁', '<0xE0>', '<0xA5>', '<0xA7>', '<0xE0>', '<0xA5>', '<0xA8>', '<0xE0>', '<0xA5>', '<0xA9>', '<0xE0>', '<0xA5>', '<0xAA>', '<0xE0>', '<0xA5>', '<0xAB>', '<0xE0>', '<0xA5>', '<0xAC>', '<0xE0>', '<0xA5>', '<0xAD>', '<0xE0>', '<0xA5>', '<0xAE>', '<0xE0>', '<0xA5>', '<0xAF>', '<0xE0>', '<0xA5>', '<0xA6>']
+      Input: '१२३४५६७८९०', Tokens: 31
+  ✓ Edge: Mixed script
+      Tokens: ['▁', '<0x48>', 'el', 'lo', '▁', 'न', 'म', 'स्त', 'े', '▁', '<0xE4>', '<0xBD>', '<0xA0>', '<0xE5>', '<0xA5>', '<0xBD>']
+      Input: 'Hello नमस्ते 你好', Tokens: 16
+  ✓ Edge: URL-like
+      Tokens: ['▁', 'ht', 't', '<0x70>', 's', '://', 'ex', 'am', '<0x70>', 'le', '.', 'com']
+      Input: 'https://example.com', Tokens: 12
+  ✓ Edge: Email-like
+      Tokens: ['▁', 'te', 'st', '<0x40>', 'ex', 'am', '<0x70>', 'le', '.', 'com']
+      Input: 'test@example.com', Tokens: 10
+  ✓ Edge: Long word
+      Tokens: ['▁अं', 'तर', 'रा', 'ष्ट', '्र', 'ीय', 'कर', 'ण']
+      Input: 'अंतरराष्ट्रीयकरण', Tokens: 8
+  ✓ Edge: Repeated chars
+      Tokens: ['▁आ', 'आ', 'आ', 'आ', 'आ']
+      Input: 'आआआआआ', Tokens: 5
+  ✓ Edge: Special Unicode
+      Tokens: ['▁', '<0xE0>', '<0xA5>', '<0xA5>', '<0xE0>', '<0xA5>', '<0x90>', '<0xE0>', '<0xA5>', '<0xB0>']
+      Input: '॥ॐ॰', Tokens: 10
+  ✓ Edge: Zero-width chars
+      Tokens: ['▁', 'क', '्', '<0xE2>', '<0x80>', '<0x8D>', 'ष']
+      Input: 'क्‍ष', Tokens: 7
+
+  Category Result: 12/12 passed (100.0%)
+
+──────────────────────────────────────────────────────────────────────
+Testing: Roundtrip Encoding/Decoding
+──────────────────────────────────────────────────────────────────────
+  ✓ Roundtrip: भारत एक महान देश है।... (9 tokens)
+  ✓ Roundtrip: मेरा नाम राहुल है।... (8 tokens)
+  ✓ Roundtrip: आज मौसम बहुत अच्छा है।... (10 tokens)
+  ✓ Roundtrip: वह स्कूल जाता है।... (9 tokens)
+  ✓ Roundtrip: भारतीय संविधान विश्व का सबसे बड़ा लिखित ... (24 tokens)
+  ✓ Roundtrip: विज्ञान और प्रौद्योगिकी ने मानव जीवन को ... (28 tokens)
+  ✓ Roundtrip: स्वतंत्रता संग्राम में अनेक वीरों ने अपन... (32 tokens)
+  ✓ Roundtrip: मुझे Python सीखना है।... (12 tokens)
+  ✓ Roundtrip: यह software बहुत अच्छा है।... (16 tokens)
+  ✓ Roundtrip: आज meeting में क्या discuss हुआ?... (19 tokens)
+  ✓ Roundtrip: मैंने email भेज दिया है।... (12 tokens)
+  ✓ Roundtrip: The quick brown fox jumps over the lazy ... (35 tokens)
+  ✓ Roundtrip: Hello, how are you today?... (19 tokens)
+  ✓ Roundtrip: Machine learning is transforming industr... (30 tokens)
+  ✓ Roundtrip: कृत्रिम बुद्धिमत्ता का विकास तेज़ी से हो... (26 tokens)
+  ✓ Roundtrip: संगणक विज्ञान आधुनिक युग की नींव है।... (19 tokens)
+  ✓ Roundtrip: इंटरनेट ने संचार को क्रांतिकारी बना दिया... (20 tokens)
+  ✓ Roundtrip: जीवन एक संघर्ष है, हार मत मानो।... (18 tokens)
+  ✓ Roundtrip: प्रेम वह शक्ति है जो दुनिया को चलाती है।... (22 tokens)
+  ✓ Roundtrip: ज्ञान का दीपक अज्ञान के अंधकार को दूर कर... (21 tokens)
+
+  Category Result: 20/20 passed (100.0%)
+
+──────────────────────────────────────────────────────────────────────
+Token Efficiency Metrics
+──────────────────────────────────────────────────────────────────────
+  avg_tokens_per_common_word: 1.97
+  chars_per_token_Simple Hindi: 2.14
+  chars_per_token_Complex Hindi: 1.96
+  chars_per_token_Hinglish: 1.75
+  chars_per_token_English: 1.35
+  chars_per_token_Technical Hindi: 1.92
+  chars_per_token_Literary Hindi: 1.92
+
+======================================================================
+EVALUATION SUMMARY
+======================================================================
+Total Tests: 420
+Passed: 360
+Failed: 60
+Pass Rate: 85.7%
+======================================================================
+
+Category Breakdown:
+  ✓ Special Tokens: 3/3 (100.0%)
+  ✓ Conjuncts (संयुक्त अक्षर): 55/55 (100.0%)
+  ⚠ Verb Morphology (क्रिया रूप): 46/52 (88.5%)
+  ⚠ Noun Morphology (संज्ञा रूप): 26/32 (81.2%)
+  ⚠ Pronouns (सर्वनाम): 64/69 (92.8%)
+  ✗ Numbers (संख्याएँ): 41/53 (77.4%)
+  ✗ Prefixes/Suffixes (उपसर्ग/प्रत्यय): 59/88 (67.0%)
+  ⚠ Connectors (संयोजक): 31/33 (93.9%)
+  ✓ Chat Template: 3/3 (100.0%)
+  ✓ Edge Cases: 12/12 (100.0%)
+  ✓ Roundtrip: 20/20 (100.0%)

@@ -196,7 +196,7 @@ Examples:
                         help="Training sequence length")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1],
                         help="Use MoE architecture")
-    parser.add_argument('--tokenizer_path', default='../model_hindi', type=str,
+    parser.add_argument('--tokenizer_path', default='./model_hindi', type=str,
                         help="Hindi tokenizer path")
 
     # Training arguments
@@ -287,9 +287,16 @@ Examples:
 
     # ========== 5. Initialize model, data, optimizer ==========
     Logger("Initializing model...")
-    from transformers import AutoTokenizer
 
-    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
+    # Use HindiTokenizer wrapper for consistent normalization (training = inference)
+    try:
+        from model.HindiTokenizer import HindiTokenizer
+        tokenizer = HindiTokenizer.from_pretrained(args.tokenizer_path)
+        Logger("Using HindiTokenizer wrapper (consistent Indic normalization)")
+    except ImportError:
+        Logger("Warning: HindiTokenizer not available, using AutoTokenizer (no Indic normalization)")
+        from transformers import AutoTokenizer
+        tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
     model = MiniMindForCausalLM(lm_config).to(args.device)
 
     Logger(f"Model Parameters: {sum(p.numel() for p in model.parameters()) / 1e6:.2f}M")

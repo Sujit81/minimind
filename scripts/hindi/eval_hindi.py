@@ -22,7 +22,13 @@ warnings.filterwarnings('ignore')
 
 def init_model(args):
     """Initialize the Hindi MiniMind model."""
-    tokenizer = AutoTokenizer.from_pretrained(args.load_from)
+    # Use HindiTokenizer wrapper for consistent normalization
+    try:
+        from model.HindiTokenizer import HindiTokenizer
+        tokenizer = HindiTokenizer.from_pretrained(args.load_from)
+        print("Using HindiTokenizer wrapper (consistent Indic normalization)")
+    except ImportError:
+        tokenizer = AutoTokenizer.from_pretrained(args.load_from)
 
     if 'model' in args.load_from or 'hindi' in args.load_from:
         model = MiniMindForCausalLM(MiniMindConfig(
