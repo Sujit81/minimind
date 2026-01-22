@@ -217,7 +217,6 @@ if __name__ == "__main__":
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
     
     # ========== 6. 从ckp恢复状态 ==========
-    global best_eval_loss
     start_epoch, start_step = 0, 0
     if ckp_data:
         model.load_state_dict(ckp_data['model'])
@@ -225,7 +224,6 @@ if __name__ == "__main__":
         scaler.load_state_dict(ckp_data['scaler'])
         start_epoch = ckp_data['epoch']
         start_step = ckp_data.get('step', 0)
-        best_eval_loss = ckp_data.get('best_eval_loss', float('inf'))
     
     # ========== 7. DDP包模型 ==========
     if dist.is_initialized():
