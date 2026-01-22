@@ -19,8 +19,64 @@ from trainer.trainer_utils import get_lr, Logger, is_main_process, lm_checkpoint
 
 warnings.filterwarnings('ignore')
 
+# Global variable to track best eval loss
+best_eval_loss = float('inf')
 
-def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
+
+def evaluate(model, eval_loader, args, num_batches=50):
+    """Evaluate model on eval dataset and return average loss."""
+    model.eval()
+    loss_fct = nn.CrossEntropyLoss(reduction='none')
+    total_loss = 0.0
+    total_tokens = 0
+
+    with torch.no_grad():
+        for i, (X, Y, loss_mask) in enumerate(eval_loader):
+            if i >= num_batches:
+                break
+            X = X.to(args.device)
+            Y = Y.to(args.device)
+            loss_mask = loss_mask.to(args.device)
+
+            with autocast_ctx:
+                res = model(X)
+                loss = loss_fct(
+                    res.logits.view(-1, res.logits.size(-1)),
+                    Y.view(-1)
+                ).view(Y.size())
+
+                batch_loss = (loss * loss_mask).sum()
+                batch_tokens = loss_mask.sum()
+
+            total_loss += batch_loss.item()
+            total_tokens += batch_tokens.item()
+
+            del X, Y, loss_mask, res, loss
+
+    model.train()
+    return total_loss / total_tokens if total_tokens > 0 else 0.0
+
+
+def save_best_checkpoint(model, eval_loss, args, lm_config):
+    """Save checkpoint if eval_loss is the best so far."""
+    global best_eval_loss
+    if eval_loss < best_eval_loss:
+        best_eval_loss = eval_loss
+        moe_suffix = '_moe' if lm_config.use_moe else ''
+        best_ckp = f'{args.save_dir}/{args.save_weight}_best_{lm_config.hidden_size}{moe_suffix}.pth'
+        if isinstance(model, torch.nn.parallel.DistributedDataParallel):
+            state_dict = model.module.state_dict()
+        else:
+            state_dict = model.state_dict()
+        state_dict = {k: v.half().cpu() for k, v in state_dict.items()}
+        torch.save(state_dict, best_ckp)
+        Logger(f'New best eval_loss: {eval_loss:.4f}, saved to {best_ckp}')
+        del state_dict
+        return True
+    return False
+
+
+def train_epoch(epoch, loader, iters, start_step=0, wandb=None, eval_loader=None):
     loss_fct = nn.CrossEntropyLoss(reduction='none')
     start_time = time.time()
     for step, (X, Y, loss_mask) in enumerate(loader, start=start_step + 1):
@@ -60,10 +116,19 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None):
             current_aux_loss = res.aux_loss.item()
             current_lr = optimizer.param_groups[-1]['lr']
             eta_min = spend_time / (step + 1) * iters // 60 - spend_time // 60
-            
+
             Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), loss: {current_loss:.4f}, logits_loss: {current_logits_loss:.4f}, aux_loss: {current_aux_loss:.4f}, learning_rate: {current_lr:.8f}, epoch_time: {eta_min:.3f}min')
-            
+
             if wandb: wandb.log({"loss": current_loss, "logits_loss": current_logits_loss, "aux_loss": current_aux_loss, "learning_rate": current_lr, "epoch_time": eta_min})
+
+        # Evaluate every eval_interval steps
+        if eval_loader is not None and step % args.eval_interval == 0:
+            eval_loss = evaluate(model, eval_loader, args, num_batches=args.eval_batches)
+            Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), eval_loss: {eval_loss:.4f}')
+            if wandb: wandb.log({"eval_loss": eval_loss, "best_eval_loss": best_eval_loss})
+            # Save best checkpoint
+            if is_main_process():
+                save_best_checkpoint(model, eval_loss, args, lm_config)
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
             model.eval()
@@ -96,6 +161,8 @@ if __name__ == "__main__":
     parser.add_argument("--grad_clip", type=float, default=1.0, help="梯度裁剪阈值")
     parser.add_argument("--log_interval", type=int, default=100, help="日志打印间隔")
     parser.add_argument("--save_interval", type=int, default=1000, help="模型保存间隔")
+    parser.add_argument("--eval_interval", type=int, default=500, help="评估间隔步数")
+    parser.add_argument("--eval_batches", type=int, default=50, help="每次评估的batch数量")
     parser.add_argument('--hidden_size', default=512, type=int, help="隐藏层维度")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="隐藏层数量")
     parser.add_argument('--max_seq_len', default=340, type=int, help="训练的最大截断长度（中文1token≈1.5~1.7字符）")
@@ -144,10 +211,13 @@ if __name__ == "__main__":
     model, tokenizer = init_model(lm_config, args.from_weight, tokenizer_path=args.tokenizer_path, device=args.device)
     train_ds = PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len)
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
+    # Create eval dataloader (uses same dataset, no shuffle for consistent eval)
+    eval_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
     scaler = torch.cuda.amp.GradScaler(enabled=(args.dtype == 'float16'))
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
     
     # ========== 6. 从ckp恢复状态 ==========
+    global best_eval_loss
     start_epoch, start_step = 0, 0
     if ckp_data:
         model.load_state_dict(ckp_data['model'])
@@ -155,6 +225,7 @@ if __name__ == "__main__":
         scaler.load_state_dict(ckp_data['scaler'])
         start_epoch = ckp_data['epoch']
         start_step = ckp_data.get('step', 0)
+        best_eval_loss = ckp_data.get('best_eval_loss', float('inf'))
     
     # ========== 7. DDP包模型 ==========
     if dist.is_initialized():
@@ -168,10 +239,10 @@ if __name__ == "__main__":
             batch_sampler = SkipBatchSampler(train_sampler or range(len(train_ds)), args.batch_size, start_step + 1)
             loader = DataLoader(train_ds, batch_sampler=batch_sampler, num_workers=args.num_workers, pin_memory=True)
             Logger(f'Epoch [{epoch + 1}/{args.epochs}]: 跳过前{start_step}个step，从step {start_step + 1}开始')
-            train_epoch(epoch, loader, len(loader) + start_step + 1, start_step, wandb)
+            train_epoch(epoch, loader, len(loader) + start_step + 1, start_step, wandb, eval_loader)
         else: # 默认从头开始
             loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=(train_sampler is None), sampler=train_sampler, num_workers=args.num_workers, pin_memory=True)
-            train_epoch(epoch, loader, len(loader), 0, wandb)
+            train_epoch(epoch, loader, len(loader), 0, wandb, eval_loader)
     
     # ========== 9. 清理分布进程 ==========
     if dist.is_initialized(): dist.destroy_process_group()
