@@ -7,12 +7,81 @@ __package__ = "trainer"
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import random
 import math
+from datetime import datetime
 import numpy as np
 import torch
 import torch.distributed as dist
 from torch.utils.data import Sampler
 from transformers import AutoTokenizer
+from loguru import logger
 from model.model_minimind import MiniMindForCausalLM
+
+# Global logger instance
+_logger_initialized = False
+
+
+def setup_logger(log_dir='../logs', log_name=None, level='INFO'):
+    """
+    Setup loguru logger with file and console output.
+
+    Args:
+        log_dir: Directory to store log files
+        log_name: Custom log filename (without extension). If None, uses timestamp.
+        level: Logging level (DEBUG, INFO, WARNING, ERROR)
+    """
+    global _logger_initialized
+
+    if _logger_initialized:
+        return logger
+
+    # Only main process should log to file
+    if not is_main_process():
+        _logger_initialized = True
+        return logger
+
+    # Convert relative path to absolute path
+    if log_dir.startswith('..') or log_dir.startswith('.'):
+        log_dir = os.path.abspath(os.path.join(os.path.dirname(__file__), log_dir))
+
+    # Create log directory if not exists
+    os.makedirs(log_dir, exist_ok=True)
+
+    # Generate log filename with timestamp
+    timestamp = datetime.now().strftime('%Y%m%d_%H%M%S')
+    if log_name:
+        log_filename = f"{log_name}_{timestamp}.log"
+    else:
+        log_filename = f"train_{timestamp}.log"
+
+    log_path = os.path.join(log_dir, log_filename)
+
+    # Remove default handler
+    logger.remove()
+
+    # Add console handler with color
+    logger.add(
+        sys.stdout,
+        format="<green>{time:YYYY-MM-DD HH:mm:ss}</green> | <level>{level: <8}</level> | <level>{message}</level>",
+        level=level,
+        colorize=True
+    )
+
+    # Add file handler
+    logger.add(
+        log_path,
+        format="{time:YYYY-MM-DD HH:mm:ss} | {level: <8} | {message}",
+        level=level,
+        rotation="100 MB",  # Rotate when file reaches 100MB
+        retention="30 days",  # Keep logs for 30 days
+        compression="zip",  # Compress rotated logs
+        encoding="utf-8"
+    )
+
+    _logger_initialized = True
+    logger.info(f"Logging initialized. Log file: {log_path}")
+
+    return logger
+
 
 def get_model_params(model, config):
     total = sum(p.numel() for p in model.parameters()) / 1e6
@@ -31,13 +100,92 @@ def is_main_process():
     return not dist.is_initialized() or dist.get_rank() == 0
 
 
-def Logger(content):
+def Logger(content, level='INFO'):
+    """
+    Log content using loguru. Only main process logs.
+
+    Args:
+        content: Message to log
+        level: Log level (DEBUG, INFO, WARNING, ERROR, SUCCESS)
+    """
     if is_main_process():
-        print(content)
+        if level == 'DEBUG':
+            logger.debug(content)
+        elif level == 'WARNING':
+            logger.warning(content)
+        elif level == 'ERROR':
+            logger.error(content)
+        elif level == 'SUCCESS':
+            logger.success(content)
+        else:
+            logger.info(content)
 
 
 def get_lr(current_step, total_steps, lr):
     return lr*(0.1 + 0.45*(1 + math.cos(math.pi * current_step / total_steps)))
+
+
+def format_time(seconds):
+    """Format seconds into human readable string (e.g., '1h 23m 45s' or '5m 30s')"""
+    if seconds < 0:
+        return "0s"
+    hours = int(seconds // 3600)
+    minutes = int((seconds % 3600) // 60)
+    secs = int(seconds % 60)
+
+    if hours > 0:
+        return f"{hours}h {minutes}m {secs}s"
+    elif minutes > 0:
+        return f"{minutes}m {secs}s"
+    else:
+        return f"{secs}s"
+
+
+def compute_eta(start_time, current_step, total_steps, current_epoch, total_epochs):
+    """
+    Compute elapsed time and ETA for training.
+
+    Args:
+        start_time: Training start time (from time.time())
+        current_step: Current step in current epoch
+        total_steps: Total steps in current epoch
+        current_epoch: Current epoch (0-indexed)
+        total_epochs: Total number of epochs
+
+    Returns:
+        dict with 'elapsed', 'epoch_eta', 'total_eta' as formatted strings
+    """
+    import time
+    elapsed = time.time() - start_time
+
+    if current_step == 0:
+        return {
+            'elapsed': format_time(elapsed),
+            'epoch_eta': 'calculating...',
+            'total_eta': 'calculating...',
+            'speed': 0.0
+        }
+
+    # Time per step
+    time_per_step = elapsed / current_step
+
+    # Steps remaining in current epoch
+    steps_remaining_epoch = total_steps - current_step
+    epoch_eta = steps_remaining_epoch * time_per_step
+
+    # Total remaining: current epoch remaining + full remaining epochs
+    remaining_epochs = total_epochs - current_epoch - 1
+    total_eta = epoch_eta + (remaining_epochs * total_steps * time_per_step)
+
+    # Speed (steps per second)
+    speed = current_step / elapsed if elapsed > 0 else 0
+
+    return {
+        'elapsed': format_time(elapsed),
+        'epoch_eta': format_time(epoch_eta),
+        'total_eta': format_time(total_eta),
+        'speed': speed
+    }
 
 
 def init_distributed_mode():

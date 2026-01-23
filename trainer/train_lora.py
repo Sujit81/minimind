@@ -16,7 +16,7 @@ from torch.utils.data import DataLoader, DistributedSampler
 from model.model_minimind import MiniMindConfig
 from dataset.lm_dataset import SFTDataset
 from model.model_lora import save_lora, apply_lora
-from trainer.trainer_utils import get_lr, Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, init_model, SkipBatchSampler
+from trainer.trainer_utils import get_lr, Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, init_model, SkipBatchSampler, setup_logger, compute_eta
 
 warnings.filterwarnings('ignore')
 
@@ -55,16 +55,15 @@ def train_epoch(epoch, loader, iters, lora_params, start_step=0, wandb=None):
             optimizer.zero_grad(set_to_none=True)
 
         if step % args.log_interval == 0 or step == iters - 1:
-            spend_time = time.time() - start_time
             current_loss = loss.item() * args.accumulation_steps
             current_logits_loss = logits_loss.item()
             current_aux_loss = res.aux_loss.item()
             current_lr = optimizer.param_groups[-1]['lr']
-            eta_min = spend_time / (step + 1) * iters // 60 - spend_time // 60
-            
-            Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), loss: {current_loss:.4f}, logits_loss: {current_logits_loss:.4f}, aux_loss: {current_aux_loss:.4f}, learning_rate: {current_lr:.8f}, epoch_time: {eta_min:.3f}min')
-            
-            if wandb: wandb.log({"loss": current_loss, "logits_loss": current_logits_loss, "aux_loss": current_aux_loss, "learning_rate": current_lr, "epoch_time": eta_min})
+            eta = compute_eta(start_time, step, iters, epoch, args.epochs)
+
+            Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}) | loss: {current_loss:.4f} | logits: {current_logits_loss:.4f} | aux: {current_aux_loss:.4f} | lr: {current_lr:.2e} | elapsed: {eta["elapsed"]} | ETA: {eta["total_eta"]} | {eta["speed"]:.2f} steps/s')
+
+            if wandb: wandb.log({"loss": current_loss, "logits_loss": current_logits_loss, "aux_loss": current_aux_loss, "learning_rate": current_lr, "speed": eta["speed"]})
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
             model.eval()
@@ -100,13 +99,18 @@ if __name__ == "__main__":
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
     parser.add_argument("--use_wandb", action="store_true", help="是否使用wandb")
     parser.add_argument("--wandb_project", type=str, default="MiniMind-LoRA", help="wandb项目名")
+    parser.add_argument("--log_dir", type=str, default="../logs", help="日志保存目录")
+    parser.add_argument("--log_level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="日志级别")
     args = parser.parse_args()
 
     # ========== 1. 初始化环境和随机种子 ==========
     local_rank = init_distributed_mode()
     if dist.is_initialized(): args.device = f"cuda:{local_rank}"
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
-    
+
+    # ========== 1.5 初始化日志 ==========
+    setup_logger(log_dir=args.log_dir, log_name=f"lora_{args.lora_name}_{args.hidden_size}", level=args.log_level)
+
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
     lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers, use_moe=bool(args.use_moe))

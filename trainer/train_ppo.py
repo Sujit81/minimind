@@ -6,6 +6,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 import argparse
 import re
+import time
 import warnings
 import torch
 import torch.distributed as dist
@@ -20,7 +21,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import AutoModel
 from model.model_minimind import MiniMindConfig, MiniMindForCausalLM
 from dataset.lm_dataset import RLAIFDataset
-from trainer.trainer_utils import Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler, init_model
+from trainer.trainer_utils import Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler, init_model, setup_logger, compute_eta
 
 warnings.filterwarnings('ignore')
 
@@ -119,6 +120,7 @@ def calculate_rewards(prompts, responses, reward_model, reward_tokenizer):
 def ppo_train_epoch(epoch, loader, iters, old_actor_model, ref_model, actor_scheduler, critic_scheduler, reward_model, reward_tokenizer, start_step=0, wandb=None):
     actor_model.train()
     critic_model.train()
+    start_time = time.time()
 
     for step, batch in enumerate(loader, start=start_step + 1):
         prompts = batch["prompt"]  # list[str], length B
@@ -201,6 +203,7 @@ def ppo_train_epoch(epoch, loader, iters, old_actor_model, ref_model, actor_sche
             avg_len_val = avg_len.item()
             actor_lr = actor_optimizer.param_groups[0]['lr']
             critic_lr = critic_optimizer.param_groups[0]['lr']
+            eta = compute_eta(start_time, step - start_step, iters - start_step, epoch, args.epochs)
 
             if wandb is not None:
                 wandb.log({
@@ -212,12 +215,10 @@ def ppo_train_epoch(epoch, loader, iters, old_actor_model, ref_model, actor_sche
                     "kl_ref": kl_ref_val,
                     "avg_response_len": avg_len_val,
                     "actor_lr": actor_lr,
+                    "speed": eta["speed"]
                 })
 
-            Logger(f"Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), "
-                   f"Actor Loss: {actor_loss_val:.4f}, Critic Loss: {critic_loss_val:.4f}, Aux Loss: {current_aux_loss:.4f}, "
-                   f"Reward: {reward_val:.4f}, KL: {kl_val:.4f}, KL_ref: {kl_ref_val:.4f}, "
-                   f"Avg Response Len: {avg_len_val:.2f}, Actor LR: {actor_lr:.8f}, Critic LR: {critic_lr:.8f}")
+            Logger(f"Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}) | actor: {actor_loss_val:.4f} | critic: {critic_loss_val:.4f} | aux: {current_aux_loss:.4f} | reward: {reward_val:.4f} | KL: {kl_val:.4f} | resp_len: {avg_len_val:.1f} | lr: {actor_lr:.2e} | elapsed: {eta['elapsed']} | ETA: {eta['total_eta']}")
 
         if (step + 1) % args.update_old_actor_freq == 0:
             state_dict = actor_model.module.state_dict() if isinstance(actor_model, DistributedDataParallel) else actor_model.state_dict()
@@ -274,13 +275,18 @@ if __name__ == "__main__":
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
     parser.add_argument("--use_wandb", action="store_true", help="是否使用wandb")
     parser.add_argument("--wandb_project", type=str, default="MiniMind-PPO", help="wandb项目名")
+    parser.add_argument("--log_dir", type=str, default="../logs", help="日志保存目录")
+    parser.add_argument("--log_level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="日志级别")
     args = parser.parse_args()
 
     # ========== 1. 初始化环境和随机种子 ==========
     local_rank = init_distributed_mode()
     if dist.is_initialized(): args.device = f"cuda:{local_rank}"
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
-    
+
+    # ========== 1.5 初始化日志 ==========
+    setup_logger(log_dir=args.log_dir, log_name=f"ppo_{args.hidden_size}{'_moe' if args.use_moe else ''}", level=args.log_level)
+
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
     lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers, use_moe=bool(args.use_moe))

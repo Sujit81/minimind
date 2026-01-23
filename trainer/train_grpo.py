@@ -7,6 +7,7 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import argparse
 import re
 import gc
+import time
 import warnings
 import torch
 import torch.distributed as dist
@@ -19,7 +20,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import AutoModel
 from model.model_minimind import MiniMindConfig, MiniMindForCausalLM
 from dataset.lm_dataset import RLAIFDataset
-from trainer.trainer_utils import Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler, init_model
+from trainer.trainer_utils import Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler, init_model, setup_logger, compute_eta
 
 warnings.filterwarnings('ignore')
 
@@ -93,6 +94,7 @@ def calculate_rewards(prompts, responses, reward_model, reward_tokenizer):
 
 
 def grpo_train_epoch(epoch, loader, iters, ref_model, reward_model, reward_tokenizer, start_step=0, wandb=None):
+    start_time = time.time()
     for step, batch in enumerate(loader, start=start_step + 1):
         prompts = batch['prompt']  # list[str], length B
         prompt_inputs = tokenizer(prompts, return_tensors="pt", padding=True, return_token_type_ids=False,
@@ -161,10 +163,9 @@ def grpo_train_epoch(epoch, loader, iters, ref_model, reward_model, reward_token
             avg_reward_val = rewards.mean().item()
             avg_len_val = completion_mask.sum(dim=1).float().mean().item()
             current_lr = optimizer.param_groups[0]['lr']
+            eta = compute_eta(start_time, step - start_step, iters - start_step, epoch, args.epochs)
 
-            Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), '
-                   f'Actor Loss: {policy_loss_val:.4f}, Aux Loss: {current_aux_loss:.4f}, Reward: {avg_reward_val:.4f}, '
-                   f'Avg Response Len: {avg_len_val:.2f}, Learning Rate: {current_lr:.8f}')
+            Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}) | policy_loss: {policy_loss_val:.4f} | aux: {current_aux_loss:.4f} | reward: {avg_reward_val:.4f} | resp_len: {avg_len_val:.1f} | lr: {current_lr:.2e} | elapsed: {eta["elapsed"]} | ETA: {eta["total_eta"]}')
 
             if wandb and is_main_process():
                 wandb.log({
@@ -173,7 +174,8 @@ def grpo_train_epoch(epoch, loader, iters, ref_model, reward_model, reward_token
                     "reward": avg_reward_val,
                     "avg_response_len": avg_len_val,
                     "advantages_mean": advantages.mean().item(),
-                    "learning_rate": current_lr
+                    "learning_rate": current_lr,
+                    "speed": eta["speed"]
                 })
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
@@ -218,13 +220,18 @@ if __name__ == "__main__":
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
     parser.add_argument("--use_wandb", action="store_true", help="是否使用wandb")
     parser.add_argument("--wandb_project", type=str, default="MiniMind-GRPO", help="wandb项目名")
+    parser.add_argument("--log_dir", type=str, default="../logs", help="日志保存目录")
+    parser.add_argument("--log_level", type=str, default="INFO", choices=["DEBUG", "INFO", "WARNING", "ERROR"], help="日志级别")
     args = parser.parse_args()
 
     # ========== 1. 初始化环境和随机种子 ==========
     local_rank = init_distributed_mode()
     if dist.is_initialized(): args.device = f"cuda:{local_rank}"
     setup_seed(42 + (dist.get_rank() if dist.is_initialized() else 0))
-    
+
+    # ========== 1.5 初始化日志 ==========
+    setup_logger(log_dir=args.log_dir, log_name=f"grpo_{args.hidden_size}{'_moe' if args.use_moe else ''}", level=args.log_level)
+
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
     lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers,
