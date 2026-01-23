@@ -20,7 +20,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 from transformers import AutoModel
 from model.model_minimind import MiniMindConfig, MiniMindForCausalLM
 from dataset.lm_dataset import RLAIFDataset
-from trainer.trainer_utils import Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler, init_model, setup_logger, compute_eta
+from trainer.trainer_utils import Logger, is_main_process, lm_checkpoint, init_distributed_mode, setup_seed, SkipBatchSampler, init_model, setup_logger, compute_eta, load_checkpoint
 
 warnings.filterwarnings('ignore')
 
@@ -218,6 +218,7 @@ if __name__ == "__main__":
     parser.add_argument("--reasoning", type=int, default=1, choices=[0, 1], help='推理模型类型（0=普通模型，1=推理模型）')
     parser.add_argument("--reward_model_path", type=str, default="../../internlm2-1_8b-reward", help="Reward模型路径")
     parser.add_argument('--from_resume', default=0, type=int, choices=[0, 1], help="是否自动检测&续训（0=否，1=是）")
+    parser.add_argument('--resume_from', default='', type=str, help="从指定的checkpoint文件恢复训练（优先级高于from_resume）")
     parser.add_argument("--use_wandb", action="store_true", help="是否使用wandb")
     parser.add_argument("--wandb_project", type=str, default="MiniMind-GRPO", help="wandb项目名")
     parser.add_argument("--log_dir", type=str, default="../logs", help="日志保存目录")
@@ -234,9 +235,19 @@ if __name__ == "__main__":
 
     # ========== 2. 配置目录、模型参数、检查ckp ==========
     os.makedirs(args.save_dir, exist_ok=True)
+    script_dir = os.path.dirname(os.path.abspath(__file__))
     lm_config = MiniMindConfig(hidden_size=args.hidden_size, num_hidden_layers=args.num_hidden_layers,
                                max_seq_len=args.max_seq_len + args.max_gen_len, use_moe=bool(args.use_moe))
-    ckp_data = lm_checkpoint(lm_config, weight=args.save_weight, save_dir='../checkpoints') if args.from_resume==1 else None
+
+    # 加载checkpoint: 优先使用 --resume_from 指定的文件，否则使用 --from_resume 自动检测
+    ckp_data = None
+    if args.resume_from:
+        resume_path = args.resume_from
+        if resume_path.startswith('..') or resume_path.startswith('.'):
+            resume_path = os.path.abspath(os.path.join(script_dir, resume_path))
+        ckp_data = load_checkpoint(resume_path, device='cpu')
+    elif args.from_resume == 1:
+        ckp_data = lm_checkpoint(lm_config, weight=args.save_weight, save_dir='../checkpoints')
     
     # ========== 3. 设置混合精度 ==========
     device_type = "cuda" if "cuda" in args.device else "cpu"

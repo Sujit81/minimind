@@ -263,6 +263,36 @@ def lm_checkpoint(lm_config, weight='full_sft', model=None, optimizer=None, epoc
         return None
 
 
+def load_checkpoint(checkpoint_path, device='cpu'):
+    """
+    Load checkpoint from an explicit file path.
+
+    Args:
+        checkpoint_path: Path to the checkpoint file (.pth)
+        device: Device to load the checkpoint to
+
+    Returns:
+        dict containing checkpoint data (model, optimizer, epoch, step, etc.)
+        or None if file doesn't exist
+    """
+    if not os.path.exists(checkpoint_path):
+        Logger(f'Checkpoint file not found: {checkpoint_path}', level='ERROR')
+        return None
+
+    Logger(f'Loading checkpoint from: {checkpoint_path}')
+    ckp_data = torch.load(checkpoint_path, map_location=device)
+
+    # Handle world_size changes for DDP
+    saved_ws = ckp_data.get('world_size', 1)
+    current_ws = dist.get_world_size() if dist.is_initialized() else 1
+    if saved_ws != current_ws:
+        ckp_data['step'] = ckp_data['step'] * saved_ws // current_ws
+        Logger(f'GPU count changed ({saved_ws}→{current_ws}), step adjusted to {ckp_data["step"]}')
+
+    Logger(f'Checkpoint loaded: epoch={ckp_data.get("epoch", 0)}, step={ckp_data.get("step", 0)}', level='SUCCESS')
+    return ckp_data
+
+
 def init_model(lm_config, from_weight='pretrain', tokenizer_path='../model', save_dir='../out', device='cuda'):
     # Convert relative path to absolute path for local tokenizer loading
     if tokenizer_path.startswith('..') or tokenizer_path.startswith('.'):
