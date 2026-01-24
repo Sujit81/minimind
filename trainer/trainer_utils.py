@@ -121,8 +121,34 @@ def Logger(content, level='INFO'):
             logger.info(content)
 
 
-def get_lr(current_step, total_steps, lr):
-    return lr*(0.1 + 0.45*(1 + math.cos(math.pi * current_step / total_steps)))
+def get_lr(current_step, total_steps, lr, warmup_ratio=0.01, min_lr_ratio=0.1):
+    """
+    Cosine decay with linear warmup (standard for LLM pretraining).
+
+    Args:
+        current_step: Current training step
+        total_steps: Total training steps
+        lr: Base learning rate (max LR after warmup)
+        warmup_ratio: Fraction of total steps for warmup (default 1%)
+        min_lr_ratio: Minimum LR as fraction of base LR (default 10%)
+
+    Returns:
+        Learning rate for current step
+
+    Schedule:
+        - Warmup (0 to warmup_steps): Linear 0 → lr
+        - Decay (warmup_steps to total_steps): Cosine lr → min_lr
+    """
+    warmup_steps = int(total_steps * warmup_ratio)
+    min_lr = lr * min_lr_ratio
+
+    if current_step < warmup_steps:
+        # Linear warmup: 0 → lr
+        return lr * current_step / warmup_steps
+    else:
+        # Cosine decay: lr → min_lr
+        progress = (current_step - warmup_steps) / (total_steps - warmup_steps)
+        return min_lr + 0.5 * (lr - min_lr) * (1 + math.cos(math.pi * progress))
 
 
 def format_time(seconds):

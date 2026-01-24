@@ -97,7 +97,7 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None, eval_loader=None
         X = X.to(args.device)
         Y = Y.to(args.device)
         loss_mask = loss_mask.to(args.device)
-        lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate)
+        lr = get_lr(epoch * iters + step, args.epochs * iters, args.learning_rate, args.warmup_ratio, args.min_lr_ratio)
         for param_group in optimizer.param_groups:
             param_group['lr'] = lr
 
@@ -177,6 +177,8 @@ if __name__ == "__main__":
     parser.add_argument("--epochs", type=int, default=1, help="训练轮数（建议1轮zero或2-6轮充分训练）")
     parser.add_argument("--batch_size", type=int, default=32, help="batch size")
     parser.add_argument("--learning_rate", type=float, default=5e-4, help="初始学习率")
+    parser.add_argument("--warmup_ratio", type=float, default=0.01, help="Warmup步数占比 (default: 1%)")
+    parser.add_argument("--min_lr_ratio", type=float, default=0.1, help="最小学习率占比 (default: 10% of base LR)")
     parser.add_argument("--device", type=str, default="cuda:0" if torch.cuda.is_available() else "cpu", help="训练设备")
     parser.add_argument("--dtype", type=str, default="bfloat16", help="混合精度类型")
     parser.add_argument("--num_workers", type=int, default=8, help="数据加载线程数")
