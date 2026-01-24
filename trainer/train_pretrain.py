@@ -63,7 +63,7 @@ def save_best_checkpoint(model, eval_loss, args, lm_config, optimizer=None, scal
     if eval_loss < best_eval_loss:
         best_eval_loss = eval_loss
         moe_suffix = '_moe' if lm_config.use_moe else ''
-        best_ckp = f'{args.save_dir}/{args.save_weight}_best_{lm_config.hidden_size}{moe_suffix}.pth'
+        best_ckp = f'{args.save_dir}/{args.save_weight}_{lm_config.hidden_size}{moe_suffix}_best.pth'
 
         if isinstance(model, torch.nn.parallel.DistributedDataParallel):
             state_dict = model.module.state_dict()

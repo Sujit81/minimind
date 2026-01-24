@@ -1,3 +1,4 @@
+import os
 import time
 import argparse
 import random
@@ -9,8 +10,20 @@ from model.model_lora import *
 from trainer.trainer_utils import setup_seed, get_model_params
 warnings.filterwarnings('ignore')
 
+# Get script directory for relative path resolution
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def resolve_path(path):
+    """Convert relative path to absolute path based on script location."""
+    if os.path.isabs(path):
+        return path
+    return os.path.abspath(os.path.join(SCRIPT_DIR, path))
+
+
 def init_model(args):
-    tokenizer = AutoTokenizer.from_pretrained(args.load_from)
+    load_from = resolve_path(args.load_from)
+    tokenizer = AutoTokenizer.from_pretrained(load_from)
     if 'model' in args.load_from:
         model = MiniMindForCausalLM(MiniMindConfig(
             hidden_size=args.hidden_size,
@@ -19,28 +32,39 @@ def init_model(args):
             vocab_size=args.vocab_size,
             inference_rope_scaling=args.inference_rope_scaling
         ))
-        moe_suffix = '_moe' if args.use_moe else ''
-        ckp = f'./{args.save_dir}/{args.weight}_{args.hidden_size}{moe_suffix}.pth'
+
+        # Use --checkpoint if provided, otherwise construct from save_dir/weight/hidden_size
+        if args.checkpoint:
+            ckp = resolve_path(args.checkpoint)
+        else:
+            moe_suffix = '_moe' if args.use_moe else ''
+            save_dir = resolve_path(args.save_dir)
+            ckp = f'{save_dir}/{args.weight}_{args.hidden_size}{moe_suffix}.pth'
+
+        print(f"Loading checkpoint: {ckp}")
         checkpoint = torch.load(ckp, map_location=args.device)
         # Handle both formats: full checkpoint (dict with 'model' key) or weights-only
         if isinstance(checkpoint, dict) and 'model' in checkpoint:
             state_dict = checkpoint['model']
+            print(f"Full checkpoint (epoch={checkpoint.get('epoch', 0)}, step={checkpoint.get('step', 0)}, eval_loss={checkpoint.get('eval_loss', 'N/A')})")
         else:
             state_dict = checkpoint
         model.load_state_dict(state_dict, strict=True)
         if args.lora_weight != 'None':
             apply_lora(model)
-            load_lora(model, f'./{args.save_dir}/lora/{args.lora_weight}_{args.hidden_size}.pth')
+            lora_path = f'{resolve_path(args.save_dir)}/lora/{args.lora_weight}_{args.hidden_size}.pth'
+            load_lora(model, lora_path)
     else:
-        model = AutoModelForCausalLM.from_pretrained(args.load_from, trust_remote_code=True)
+        model = AutoModelForCausalLM.from_pretrained(load_from, trust_remote_code=True)
     get_model_params(model, model.config)
     return model.eval().to(args.device), tokenizer
 
 def main():
     parser = argparse.ArgumentParser(description="MiniMind模型推理与对话")
+    parser.add_argument('--checkpoint', default='', type=str, help="直接指定checkpoint文件路径（如 out/full_sft_512_best.pth）")
     parser.add_argument('--load_from', default='model', type=str, help="模型加载路径（model=原生torch权重，其他路径=transformers格式）")
-    parser.add_argument('--save_dir', default='out', type=str, help="模型权重目录")
-    parser.add_argument('--weight', default='full_sft', type=str, help="权重名称前缀（pretrain, full_sft, rlhf, reason, ppo_actor, grpo, spo）")
+    parser.add_argument('--save_dir', default='out', type=str, help="模型权重目录（--checkpoint未指定时使用）")
+    parser.add_argument('--weight', default='full_sft', type=str, help="权重名称前缀（--checkpoint未指定时使用）")
     parser.add_argument('--lora_weight', default='None', type=str, help="LoRA权重名称（None表示不使用，可选：lora_identity, lora_medical）")
     parser.add_argument('--hidden_size', default=512, type=int, help="隐藏层维度（512=Small-26M, 640=MoE-145M, 768=Base-104M）")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="隐藏层数量（Small/MoE=8, Base=16）")

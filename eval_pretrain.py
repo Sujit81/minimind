@@ -1,3 +1,4 @@
+import os
 import time
 import argparse
 import warnings
@@ -8,17 +9,35 @@ from trainer.trainer_utils import setup_seed, get_model_params
 
 warnings.filterwarnings('ignore')
 
+# Get script directory for relative path resolution
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+
+
+def resolve_path(path):
+    """Convert relative path to absolute path based on script location."""
+    if os.path.isabs(path):
+        return path
+    return os.path.abspath(os.path.join(SCRIPT_DIR, path))
+
 
 def init_model(args):
-    tokenizer = AutoTokenizer.from_pretrained(args.tokenizer_path)
+    tokenizer_path = resolve_path(args.tokenizer_path)
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     model = MiniMindForCausalLM(MiniMindConfig(
         hidden_size=args.hidden_size,
         num_hidden_layers=args.num_hidden_layers,
         use_moe=bool(args.use_moe),
         vocab_size=args.vocab_size,
     ))
-    moe_suffix = '_moe' if args.use_moe else ''
-    ckp = f'./{args.save_dir}/{args.weight}_{args.hidden_size}{moe_suffix}.pth'
+
+    # Use --checkpoint if provided, otherwise construct from save_dir/weight/hidden_size
+    if args.checkpoint:
+        ckp = resolve_path(args.checkpoint)
+    else:
+        moe_suffix = '_moe' if args.use_moe else ''
+        save_dir = resolve_path(args.save_dir)
+        ckp = f'{save_dir}/{args.weight}_{args.hidden_size}{moe_suffix}.pth'
+
     print(f"Loading checkpoint: {ckp}")
     checkpoint = torch.load(ckp, map_location=args.device)
     # Handle both formats: full checkpoint (dict with 'model' key) or weights-only
@@ -34,9 +53,10 @@ def init_model(args):
 
 def main():
     parser = argparse.ArgumentParser(description="MiniMind Pretrained Model - Text Continuation")
+    parser.add_argument('--checkpoint', default='', type=str, help="Direct path to checkpoint file (e.g., out/pretrain_640_moe_best.pth)")
     parser.add_argument('--tokenizer_path', default='model_english', type=str, help="Tokenizer path")
-    parser.add_argument('--save_dir', default='out', type=str, help="Model weights directory")
-    parser.add_argument('--weight', default='pretrain', type=str, help="Weight name prefix")
+    parser.add_argument('--save_dir', default='out', type=str, help="Model weights directory (used if --checkpoint not specified)")
+    parser.add_argument('--weight', default='pretrain', type=str, help="Weight name prefix (used if --checkpoint not specified)")
     parser.add_argument('--hidden_size', default=640, type=int, help="Hidden dimension")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="Number of layers")
     parser.add_argument('--use_moe', default=1, type=int, choices=[0, 1], help="Use MoE architecture")
