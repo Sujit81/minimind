@@ -282,10 +282,26 @@ def load_checkpoint(checkpoint_path, device='cpu'):
     Logger(f'Loading checkpoint from: {checkpoint_path}')
     ckp_data = torch.load(checkpoint_path, map_location=device)
 
+    # Handle both formats: full checkpoint (dict with 'model' key) or weights-only
+    if isinstance(ckp_data, dict) and 'model' in ckp_data:
+        # New format: full checkpoint
+        pass
+    else:
+        # Old format: weights-only, convert to new format
+        Logger(f'Converting old checkpoint format (weights-only) to new format')
+        ckp_data = {
+            'model': ckp_data,
+            'optimizer': None,
+            'scaler': None,
+            'epoch': 0,
+            'step': 0,
+            'world_size': 1
+        }
+
     # Handle world_size changes for DDP
     saved_ws = ckp_data.get('world_size', 1)
     current_ws = dist.get_world_size() if dist.is_initialized() else 1
-    if saved_ws != current_ws:
+    if saved_ws != current_ws and ckp_data.get('step', 0) > 0:
         ckp_data['step'] = ckp_data['step'] * saved_ws // current_ws
         Logger(f'GPU count changed ({saved_ws}→{current_ws}), step adjusted to {ckp_data["step"]}')
 

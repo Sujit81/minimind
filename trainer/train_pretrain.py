@@ -259,9 +259,12 @@ if __name__ == "__main__":
     start_epoch, start_step = 0, 0
     if ckp_data:
         model.load_state_dict(ckp_data['model'])
-        optimizer.load_state_dict(ckp_data['optimizer'])
-        scaler.load_state_dict(ckp_data['scaler'])
-        start_epoch = ckp_data['epoch']
+        # Only load optimizer/scaler if available (not available in old format checkpoints)
+        if ckp_data.get('optimizer') is not None:
+            optimizer.load_state_dict(ckp_data['optimizer'])
+        if ckp_data.get('scaler') is not None:
+            scaler.load_state_dict(ckp_data['scaler'])
+        start_epoch = ckp_data.get('epoch', 0)
         start_step = ckp_data.get('step', 0)
     
     # ========== 7. DDP包模型 ==========
