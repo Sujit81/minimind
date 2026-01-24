@@ -57,12 +57,14 @@ def evaluate(model, eval_loader, args, num_batches=50):
     return total_loss / total_tokens if total_tokens > 0 else 0.0
 
 
-def save_best_checkpoint(model, eval_loss, args, lm_config):
+def save_best_checkpoint(model, eval_loss, args, lm_config, optimizer=None, scaler=None, epoch=0, step=0, wandb=None):
     """Save checkpoint if eval_loss is the best so far."""
     global best_eval_loss
     if eval_loss < best_eval_loss:
         best_eval_loss = eval_loss
         moe_suffix = '_moe' if lm_config.use_moe else ''
+
+        # Save weights-only file (for inference)
         best_ckp = f'{args.save_dir}/{args.save_weight}_best_{lm_config.hidden_size}{moe_suffix}.pth'
         if isinstance(model, torch.nn.parallel.DistributedDataParallel):
             state_dict = model.module.state_dict()
@@ -70,7 +72,27 @@ def save_best_checkpoint(model, eval_loss, args, lm_config):
             state_dict = model.state_dict()
         state_dict = {k: v.half().cpu() for k, v in state_dict.items()}
         torch.save(state_dict, best_ckp)
-        Logger(f'New best eval_loss: {eval_loss:.4f}, saved to {best_ckp}')
+
+        # Save full checkpoint (for resume training)
+        if optimizer is not None and scaler is not None:
+            checkpoints_dir = os.path.join(os.path.dirname(args.save_dir), 'checkpoints')
+            os.makedirs(checkpoints_dir, exist_ok=True)
+            best_full_ckp = f'{checkpoints_dir}/{args.save_weight}_best_{lm_config.hidden_size}{moe_suffix}_checkpoint.pth'
+            full_checkpoint = {
+                'model': state_dict,
+                'optimizer': optimizer.state_dict(),
+                'scaler': scaler.state_dict(),
+                'epoch': epoch,
+                'step': step,
+                'eval_loss': eval_loss,
+                'wandb_id': wandb.run.id if wandb and hasattr(wandb, 'run') else None,
+                'world_size': dist.get_world_size() if dist.is_initialized() else 1
+            }
+            torch.save(full_checkpoint, best_full_ckp)
+            Logger(f'New best eval_loss: {eval_loss:.4f}, saved to {best_ckp} and {best_full_ckp}')
+        else:
+            Logger(f'New best eval_loss: {eval_loss:.4f}, saved to {best_ckp}')
+
         del state_dict
         return True
     return False
@@ -125,9 +147,9 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None, eval_loader=None
             eval_loss = evaluate(model, eval_loader, args, num_batches=args.eval_batches)
             Logger(f'Epoch:[{epoch + 1}/{args.epochs}]({step}/{iters}), eval_loss: {eval_loss:.4f}')
             if wandb: wandb.log({"eval_loss": eval_loss, "best_eval_loss": best_eval_loss})
-            # Save best checkpoint
+            # Save best checkpoint with full training state
             if is_main_process():
-                save_best_checkpoint(model, eval_loss, args, lm_config)
+                save_best_checkpoint(model, eval_loss, args, lm_config, optimizer, scaler, epoch, step, wandb)
 
         if (step % args.save_interval == 0 or step == iters - 1) and is_main_process():
             model.eval()

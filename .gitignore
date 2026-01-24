@@ -9,3 +9,6 @@ dataset/__pycache__/lm_dataset.cpython-312.pyc
 trainer/__pycache__/trainer_utils.cpython-312.pyc
 __pycache__/eval_llm.cpython-312.pyc
 __pycache__/eval_pretrain.cpython-312.pyc
+trainer/__pycache__/train_pretrain.cpython-312.pyc
+trainer/__pycache__/train_pretrain.cpython-312.pyc
+__pycache__

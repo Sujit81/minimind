@@ -54,6 +54,10 @@ def main():
         "The main difference between Python and Java is",
         "Climate change is caused by",
         "The human brain contains approximately",
+        "Water is found in",
+        "The capital of France is",
+        "Machine learning is a type of",
+        "The sun rises in the",
     ]
 
     model, tokenizer = init_model(args)
