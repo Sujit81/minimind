@@ -20,7 +20,14 @@ def init_model(args):
     moe_suffix = '_moe' if args.use_moe else ''
     ckp = f'./{args.save_dir}/{args.weight}_{args.hidden_size}{moe_suffix}.pth'
     print(f"Loading checkpoint: {ckp}")
-    model.load_state_dict(torch.load(ckp, map_location=args.device), strict=True)
+    checkpoint = torch.load(ckp, map_location=args.device)
+    # Handle both formats: full checkpoint (dict with 'model' key) or weights-only
+    if isinstance(checkpoint, dict) and 'model' in checkpoint:
+        state_dict = checkpoint['model']
+        print(f"Full checkpoint loaded (epoch={checkpoint.get('epoch', 0)}, step={checkpoint.get('step', 0)}, eval_loss={checkpoint.get('eval_loss', 'N/A')})")
+    else:
+        state_dict = checkpoint
+    model.load_state_dict(state_dict, strict=True)
     get_model_params(model, model.config)
     return model.eval().to(args.device), tokenizer
 

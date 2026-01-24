@@ -58,40 +58,32 @@ def evaluate(model, eval_loader, args, num_batches=50):
 
 
 def save_best_checkpoint(model, eval_loss, args, lm_config, optimizer=None, scaler=None, epoch=0, step=0, wandb=None):
-    """Save checkpoint if eval_loss is the best so far."""
+    """Save full checkpoint if eval_loss is the best so far."""
     global best_eval_loss
     if eval_loss < best_eval_loss:
         best_eval_loss = eval_loss
         moe_suffix = '_moe' if lm_config.use_moe else ''
-
-        # Save weights-only file (for inference)
         best_ckp = f'{args.save_dir}/{args.save_weight}_best_{lm_config.hidden_size}{moe_suffix}.pth'
+
         if isinstance(model, torch.nn.parallel.DistributedDataParallel):
             state_dict = model.module.state_dict()
         else:
             state_dict = model.state_dict()
         state_dict = {k: v.half().cpu() for k, v in state_dict.items()}
-        torch.save(state_dict, best_ckp)
 
-        # Save full checkpoint (for resume training)
-        if optimizer is not None and scaler is not None:
-            checkpoints_dir = os.path.join(os.path.dirname(args.save_dir), 'checkpoints')
-            os.makedirs(checkpoints_dir, exist_ok=True)
-            best_full_ckp = f'{checkpoints_dir}/{args.save_weight}_best_{lm_config.hidden_size}{moe_suffix}_checkpoint.pth'
-            full_checkpoint = {
-                'model': state_dict,
-                'optimizer': optimizer.state_dict(),
-                'scaler': scaler.state_dict(),
-                'epoch': epoch,
-                'step': step,
-                'eval_loss': eval_loss,
-                'wandb_id': wandb.run.id if wandb and hasattr(wandb, 'run') else None,
-                'world_size': dist.get_world_size() if dist.is_initialized() else 1
-            }
-            torch.save(full_checkpoint, best_full_ckp)
-            Logger(f'New best eval_loss: {eval_loss:.4f}, saved to {best_ckp} and {best_full_ckp}')
-        else:
-            Logger(f'New best eval_loss: {eval_loss:.4f}, saved to {best_ckp}')
+        # Save full checkpoint (works for both inference and resume)
+        checkpoint = {
+            'model': state_dict,
+            'optimizer': optimizer.state_dict() if optimizer else None,
+            'scaler': scaler.state_dict() if scaler else None,
+            'epoch': epoch,
+            'step': step,
+            'eval_loss': eval_loss,
+            'wandb_id': wandb.run.id if wandb and hasattr(wandb, 'run') else None,
+            'world_size': dist.get_world_size() if dist.is_initialized() else 1
+        }
+        torch.save(checkpoint, best_ckp)
+        Logger(f'New best eval_loss: {eval_loss:.4f}, saved to {best_ckp}')
 
         del state_dict
         return True
@@ -160,8 +152,18 @@ def train_epoch(epoch, loader, iters, start_step=0, wandb=None, eval_loader=None
             else:
                 state_dict = model.state_dict()
             state_dict = {k: v.half().cpu() for k, v in state_dict.items()}
-            torch.save(state_dict, ckp)
-            lm_checkpoint(lm_config, weight=args.save_weight, model=model, optimizer=optimizer, scaler=scaler, epoch=epoch, step=step, wandb=wandb, save_dir='../checkpoints')
+            # Save full checkpoint (unified format for both inference and resume)
+            checkpoint = {
+                'model': state_dict,
+                'optimizer': optimizer.state_dict(),
+                'scaler': scaler.state_dict(),
+                'epoch': epoch,
+                'step': step,
+                'wandb_id': wandb.run.id if wandb and hasattr(wandb, 'run') else None,
+                'world_size': dist.get_world_size() if dist.is_initialized() else 1
+            }
+            torch.save(checkpoint, ckp)
+            Logger(f'Checkpoint saved to {ckp} (epoch={epoch}, step={step})')
             model.train()
             del state_dict
 
