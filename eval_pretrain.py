@@ -21,6 +21,50 @@ def resolve_path(path):
     return os.path.abspath(os.path.join(SCRIPT_DIR, path))
 
 
+def resolve_checkpoint_path(args):
+    """Resolve checkpoint path with support for auto MoE suffix selection."""
+    if args.checkpoint:
+        return resolve_path(args.checkpoint)
+
+    save_dir = resolve_path(args.save_dir)
+    if args.use_moe == -1:
+        moe_candidate = f'{save_dir}/{args.weight}_{args.hidden_size}_moe.pth'
+        dense_candidate = f'{save_dir}/{args.weight}_{args.hidden_size}.pth'
+        if os.path.exists(moe_candidate):
+            return moe_candidate
+        return dense_candidate
+
+    moe_suffix = '_moe' if args.use_moe == 1 else ''
+    return f'{save_dir}/{args.weight}_{args.hidden_size}{moe_suffix}.pth'
+
+
+def infer_arch_from_state_dict(state_dict):
+    """Infer core architecture fields from checkpoint weights."""
+    embed_key = 'model.embed_tokens.weight'
+    if embed_key not in state_dict:
+        raise KeyError(f"Checkpoint missing key: {embed_key}")
+
+    vocab_size, hidden_size = state_dict[embed_key].shape
+
+    layer_indices = []
+    layer_prefix = 'model.layers.'
+    for key in state_dict.keys():
+        if key.startswith(layer_prefix):
+            parts = key.split('.')
+            if len(parts) > 2 and parts[2].isdigit():
+                layer_indices.append(int(parts[2]))
+    num_hidden_layers = max(layer_indices) + 1 if layer_indices else 8
+
+    use_moe = any(('experts' in key) or ('shared_experts' in key) or ('gate' in key) for key in state_dict.keys())
+
+    return {
+        'hidden_size': int(hidden_size),
+        'num_hidden_layers': int(num_hidden_layers),
+        'vocab_size': int(vocab_size),
+        'use_moe': bool(use_moe),
+    }
+
+
 def init_model(args):
     tokenizer_path = resolve_path(args.tokenizer_path)
     try:
@@ -45,20 +89,7 @@ def init_model(args):
             pad_token=cfg.get('pad_token', '<pad>'),
         )
         print(f"[Tokenizer] Loaded PreTrainedTokenizerFast from {tokenizer_file}")
-    model = MiniMindForCausalLM(MiniMindConfig(
-        hidden_size=args.hidden_size,
-        num_hidden_layers=args.num_hidden_layers,
-        use_moe=bool(args.use_moe),
-        vocab_size=args.vocab_size,
-    ))
-
-    # Use --checkpoint if provided, otherwise construct from save_dir/weight/hidden_size
-    if args.checkpoint:
-        ckp = resolve_path(args.checkpoint)
-    else:
-        moe_suffix = '_moe' if args.use_moe else ''
-        save_dir = resolve_path(args.save_dir)
-        ckp = f'{save_dir}/{args.weight}_{args.hidden_size}{moe_suffix}.pth'
+    ckp = resolve_checkpoint_path(args)
 
     print(f"Loading checkpoint: {ckp}")
     checkpoint = torch.load(ckp, map_location=args.device)
@@ -68,6 +99,34 @@ def init_model(args):
         print(f"Full checkpoint loaded (epoch={checkpoint.get('epoch', 0)}, step={checkpoint.get('step', 0)}, eval_loss={checkpoint.get('eval_loss', 'N/A')})")
     else:
         state_dict = checkpoint
+
+    inferred = infer_arch_from_state_dict(state_dict)
+
+    if args.auto_config == 1:
+        hidden_size = inferred['hidden_size']
+        num_hidden_layers = inferred['num_hidden_layers']
+        vocab_size = inferred['vocab_size']
+        use_moe = inferred['use_moe']
+    else:
+        hidden_size = args.hidden_size
+        num_hidden_layers = args.num_hidden_layers
+        vocab_size = args.vocab_size
+        use_moe = bool(args.use_moe == 1)
+
+    model = MiniMindForCausalLM(MiniMindConfig(
+        hidden_size=hidden_size,
+        num_hidden_layers=num_hidden_layers,
+        use_moe=use_moe,
+        vocab_size=vocab_size,
+        num_experts_per_tok=args.num_experts_per_tok,
+        n_routed_experts=args.n_routed_experts,
+        n_shared_experts=args.n_shared_experts,
+    ))
+
+    print(
+        f"[Config] hidden_size={hidden_size}, layers={num_hidden_layers}, "
+        f"vocab_size={vocab_size}, use_moe={int(use_moe)}"
+    )
     model.load_state_dict(state_dict, strict=True)
     get_model_params(model, model.config)
     return model.eval().to(args.device), tokenizer
@@ -81,8 +140,12 @@ def main():
     parser.add_argument('--weight', default='pretrain', type=str, help="Weight name prefix (used if --checkpoint not specified)")
     parser.add_argument('--hidden_size', default=640, type=int, help="Hidden dimension")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="Number of layers")
-    parser.add_argument('--use_moe', default=1, type=int, choices=[0, 1], help="Use MoE architecture")
+    parser.add_argument('--use_moe', default=-1, type=int, choices=[-1, 0, 1], help="Use MoE architecture (-1=auto detect from checkpoint)")
     parser.add_argument('--vocab_size', default=16000, type=int, help="Vocabulary size")
+    parser.add_argument('--num_experts_per_tok', default=2, type=int, help="MoE: experts selected per token")
+    parser.add_argument('--n_routed_experts', default=4, type=int, help="MoE: total routed experts")
+    parser.add_argument('--n_shared_experts', default=1, type=int, help="MoE: shared experts")
+    parser.add_argument('--auto_config', default=1, type=int, choices=[0, 1], help="Auto infer hidden_size/layers/vocab/use_moe from checkpoint")
     parser.add_argument('--max_new_tokens', default=200, type=int, help="Maximum tokens to generate")
     parser.add_argument('--temperature', default=0.8, type=float, help="Sampling temperature (0.1-1.5)")
     parser.add_argument('--top_p', default=0.9, type=float, help="Nucleus sampling threshold")

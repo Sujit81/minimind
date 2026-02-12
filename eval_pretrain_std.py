@@ -68,11 +68,18 @@ def init_model(args):
     else:
         state_dict = checkpoint
 
+    moe_keys = [k for k in state_dict.keys() if 'experts' in k or 'shared_experts' in k or 'gate' in k]
+    if moe_keys and args.allow_moe_checkpoint == 0:
+        raise ValueError(
+            "Checkpoint appears to be MoE, but eval_pretrain_std.py is standard (non-MoE). "
+            "Use eval_pretrain.py --use_moe 1 (or --use_moe -1 with auto detection), "
+            "or rerun this script with --allow_moe_checkpoint 1 to ignore MoE weights."
+        )
+
     # Load with strict=False to allow missing MoE keys when loading MoE checkpoint into standard model
     model.load_state_dict(state_dict, strict=False)
 
     # Warn about MoE keys being ignored
-    moe_keys = [k for k in state_dict.keys() if 'experts' in k or 'shared_experts' in k or 'gate' in k]
     if moe_keys:
         print(f"⚠️  Warning: Checkpoint contains {len(moe_keys)} MoE-specific keys that will be ignored")
         print(f"   This is expected when loading MoE checkpoint into standard model")
@@ -90,6 +97,7 @@ def main():
     parser.add_argument('--hidden_size', default=512, type=int, help="Hidden dimension (512=Small-26M)")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="Number of layers")
     parser.add_argument('--vocab_size', default=16000, type=int, help="Vocabulary size")
+    parser.add_argument('--allow_moe_checkpoint', default=0, type=int, choices=[0, 1], help="Allow loading MoE checkpoint into dense model (ignores MoE weights)")
     parser.add_argument('--max_new_tokens', default=200, type=int, help="Maximum tokens to generate")
     parser.add_argument('--temperature', default=0.8, type=float, help="Sampling temperature (0.1-1.5)")
     parser.add_argument('--top_p', default=0.9, type=float, help="Nucleus sampling threshold")
