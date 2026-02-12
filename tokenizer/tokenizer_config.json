@@ -1,0 +1,21 @@
+{
+  "vocab_size": 32000,
+  "special_tokens": [
+    "<pad>",
+    "<unk>",
+    "<bos>",
+    "<eos>"
+  ],
+  "pad_token": "<s>",
+  "pad_token_id": 0,
+  "unk_token": "<s>",
+  "unk_token_id": 1,
+  "bos_token": "<|im_start|>",
+  "bos_token_id": 1,
+  "eos_token": "<|im_end|>",
+  "eos_token_id": 2,
+  "lowercase": false,
+  "unicode_normalize": true,
+  "source_dataset": "codelion/dclm-baseline-1B",
+  "model_type": "minimind"
+}
