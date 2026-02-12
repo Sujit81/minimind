@@ -151,6 +151,15 @@ def valid_special_token_id(token_id, vocab_size):
     return None
 
 
+def build_replacement_bad_words(tokenizer, vocab_size):
+    bad_words_ids = []
+    for token_id in range(vocab_size):
+        decoded = tokenizer.decode([token_id], skip_special_tokens=False)
+        if '�' in decoded:
+            bad_words_ids.append([token_id])
+    return bad_words_ids
+
+
 def normalize_prompt(prompt):
     """Ensure continuation starts at a word boundary."""
     if prompt and not prompt[-1].isspace():
@@ -177,6 +186,7 @@ def main():
     parser.add_argument('--top_k', default=50, type=int, help="Top-k sampling (0 to disable)")
     parser.add_argument('--repetition_penalty', default=1.2, type=float, help="Repetition penalty (1.0 = no penalty)")
     parser.add_argument('--show_speed', default=1, type=int, help="Show generation speed")
+    parser.add_argument('--ban_replacement_tokens', default=1, type=int, choices=[0, 1], help="Ban tokens that decode to replacement character (�)")
     parser.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu', type=str)
     parser.add_argument('--seed', default=42, type=int, help="Random seed (-1 for random)")
     args = parser.parse_args()
@@ -198,6 +208,11 @@ def main():
     ]
 
     model, tokenizer = init_model(args)
+
+    bad_words_ids = None
+    if args.ban_replacement_tokens == 1:
+        bad_words_ids = build_replacement_bad_words(tokenizer, model.config.vocab_size)
+        print(f"[DecodeGuard] Banning {len(bad_words_ids)} replacement-character token ids")
 
     print("\n" + "="*60)
     print("PRETRAINED MODEL - TEXT CONTINUATION (Standard/Non-MoE)")
@@ -253,6 +268,7 @@ def main():
                 streamer=streamer,
                 pad_token_id=pad_token_id,
                 eos_token_id=eos_token_id,
+                bad_words_ids=bad_words_ids,
                 top_p=args.top_p,
                 top_k=args.top_k if args.top_k > 0 else None,
                 temperature=args.temperature,
