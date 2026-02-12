@@ -285,6 +285,33 @@ def main():
 
         if args.show_speed:
             print(f"\n[Tokens: {gen_tokens} | Speed: {gen_tokens/elapsed:.2f} tokens/s | Time: {elapsed:.2f}s]")
+
+        # ── Diagnostic: raw token IDs and per-token decode ──
+        in_ids = input_ids[0].tolist()
+        new_ids = generated_ids[0][len(in_ids):].tolist()
+        print(f"\n[Diag] Input  IDs : {in_ids}")
+        print(f"[Diag] Gen IDs (first 30): {new_ids[:30]}")
+        print(f"[Diag] Unique gen IDs: {sorted(set(new_ids))}")
+        # Decode each unique generated ID
+        for tid in sorted(set(new_ids))[:15]:
+            dec = tokenizer.decode([tid], skip_special_tokens=False)
+            dec_no_special = tokenizer.decode([tid], skip_special_tokens=True)
+            print(f"  ID {tid:5d} -> raw={repr(dec):<20s}  no_special={repr(dec_no_special)}")
+        # Also decode the input IDs to verify prompt round-trip
+        prompt_roundtrip = tokenizer.decode(in_ids, skip_special_tokens=False)
+        print(f"[Diag] Prompt decoded back: {repr(prompt_roundtrip)}")
+        # Run a single forward pass to inspect logits distribution
+        with torch.no_grad():
+            out = model(input_ids=input_ids, attention_mask=attention_mask)
+            last_logits = out.logits[0, -1, :]  # logits for next token after prompt
+            probs = torch.softmax(last_logits, dim=-1)
+            top_vals, top_idx = probs.topk(10)
+            print(f"[Diag] Logits stats: min={last_logits.min().item():.4f}, max={last_logits.max().item():.4f}, "
+                  f"mean={last_logits.mean().item():.4f}, std={last_logits.std().item():.4f}")
+            print(f"[Diag] Top-10 next-token predictions after prompt:")
+            for rank, (p, idx) in enumerate(zip(top_vals.tolist(), top_idx.tolist())):
+                tok_str = tokenizer.decode([idx], skip_special_tokens=False)
+                print(f"  #{rank+1}: ID={idx:5d}  prob={p:.6f}  token={repr(tok_str)}")
         print("-" * 60)
 
 
