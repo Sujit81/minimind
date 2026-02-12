@@ -209,8 +209,18 @@ if __name__ == "__main__":
     script_dir = os.path.dirname(os.path.abspath(__file__))
     if args.data_path.startswith('..') or args.data_path.startswith('.'):
         args.data_path = os.path.abspath(os.path.join(script_dir, args.data_path))
+    if args.eval_data_path and (args.eval_data_path.startswith('..') or args.eval_data_path.startswith('.')):
+        args.eval_data_path = os.path.abspath(os.path.join(script_dir, args.eval_data_path))
     if args.save_dir.startswith('..') or args.save_dir.startswith('.'):
         args.save_dir = os.path.abspath(os.path.join(script_dir, args.save_dir))
+
+    # 兼容常见命名：若指定eval.bin不存在，则自动尝试同目录val.bin
+    if args.eval_data_path and not os.path.exists(args.eval_data_path):
+        if os.path.basename(args.eval_data_path) == 'eval.bin':
+            val_candidate = os.path.join(os.path.dirname(args.eval_data_path), 'val.bin')
+            if os.path.exists(val_candidate):
+                Logger(f'[Dataset] eval.bin not found, fallback to val.bin: {val_candidate}')
+                args.eval_data_path = val_candidate
 
     # ========== 1. 初始化环境和随机种子 ==========
     local_rank = init_distributed_mode()
