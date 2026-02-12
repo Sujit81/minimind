@@ -4,6 +4,7 @@ import argparse
 import warnings
 import json
 import torch
+from tokenizers import Tokenizer
 from transformers import AutoTokenizer, TextStreamer, PreTrainedTokenizerFast
 from model.model_minimind import MiniMindConfig, MiniMindForCausalLM
 from trainer.trainer_utils import setup_seed, get_model_params
@@ -70,18 +71,37 @@ def init_model(args):
     tokenizer_path = resolve_path(args.tokenizer_path)
     tokenizer_file = os.path.join(tokenizer_path, "tokenizer.json")
     if os.path.exists(tokenizer_file):
+        raw_tokenizer = Tokenizer.from_file(tokenizer_file)
+
+        def pick_existing(*candidates):
+            for token in candidates:
+                if token and raw_tokenizer.token_to_id(token) is not None:
+                    return token
+            return None
+
         config_file = os.path.join(tokenizer_path, "tokenizer_config.json")
         cfg = {}
         if os.path.exists(config_file):
             with open(config_file, 'r', encoding='utf-8') as f:
                 cfg = json.load(f)
 
-        tokenizer = PreTrainedTokenizerFast(
-            tokenizer_file=tokenizer_file,
-            bos_token=cfg.get('bos_token', '<bos>'),
-            eos_token=cfg.get('eos_token', '<eos>'),
-            unk_token=cfg.get('unk_token', '<unk>'),
-            pad_token=cfg.get('pad_token', '<pad>'),
+        tokenizer = PreTrainedTokenizerFast(tokenizer_file=tokenizer_file)
+        pad_tok = pick_existing(cfg.get('pad_token'), '<pad>', '<s>')
+        unk_tok = pick_existing(cfg.get('unk_token'), '<unk>')
+        bos_tok = pick_existing(cfg.get('bos_token'), '<bos>')
+        eos_tok = pick_existing(cfg.get('eos_token'), '<eos>')
+        if pad_tok is not None:
+            tokenizer.pad_token = pad_tok
+        if unk_tok is not None:
+            tokenizer.unk_token = unk_tok
+        if bos_tok is not None:
+            tokenizer.bos_token = bos_tok
+        if eos_tok is not None:
+            tokenizer.eos_token = eos_tok
+
+        print(
+            f"[Tokenizer] special ids -> pad:{tokenizer.pad_token_id}, "
+            f"unk:{tokenizer.unk_token_id}, bos:{tokenizer.bos_token_id}, eos:{tokenizer.eos_token_id}"
         )
         print(f"[Tokenizer] Loaded PreTrainedTokenizerFast from {tokenizer_file}")
     else:
