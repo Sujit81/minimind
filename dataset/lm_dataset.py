@@ -99,17 +99,53 @@ class BinaryPretrainDataset(Dataset):
 
         return self._ensure_sequence_array(np.asarray(tokens, dtype=np.int32), filepath)
 
+    def _load_raw_binary(self, filepath):
+        """Load raw token stream binary via memmap (e.g., int32/uint16 flat files)."""
+        file_size = os.path.getsize(filepath)
+        if file_size <= 0:
+            raise ValueError(f"Empty binary file: {filepath}")
+
+        candidates = []
+        if file_size % np.dtype(np.int32).itemsize == 0:
+            candidates.append(np.int32)
+        if file_size % np.dtype(np.uint16).itemsize == 0:
+            candidates.append(np.uint16)
+
+        if not candidates:
+            raise ValueError(f"Unsupported raw binary size for {filepath}: {file_size} bytes")
+
+        last_error = None
+        for dtype in candidates:
+            try:
+                data = np.memmap(filepath, dtype=dtype, mode='r')
+                data = self._ensure_sequence_array(data, filepath)
+                print(f"[BinaryPretrainDataset] Loaded raw binary with dtype={np.dtype(dtype).name}: {filepath}")
+                return data
+            except Exception as err:
+                last_error = err
+
+        raise ValueError(f"Failed to parse raw binary file {filepath}: {last_error}")
+
     def _load_binary(self, filepath):
-        """Load .bin file as numpy format; fallback to legacy pickle format."""
+        """Load .bin file as numpy format; fallback to pickle, then raw memmap."""
         try:
             data = np.load(filepath, mmap_mode='r', allow_pickle=False)
+            print(f"[BinaryPretrainDataset] Loaded NumPy binary: {filepath}")
             return self._ensure_sequence_array(data, filepath)
         except ValueError as err:
             err_text = str(err).lower()
             if 'pickled' not in err_text and 'allow_pickle' not in err_text:
                 raise
-            print(f"[BinaryPretrainDataset] Detected legacy pickled binary: {filepath}, loading with pickle fallback")
-            return self._load_pickled_binary(filepath)
+            print(f"[BinaryPretrainDataset] NumPy load rejected as pickled: {filepath}, trying pickle fallback")
+
+        try:
+            data = self._load_pickled_binary(filepath)
+            print(f"[BinaryPretrainDataset] Loaded legacy pickled binary: {filepath}")
+            return data
+        except Exception as err:
+            print(f"[BinaryPretrainDataset] Pickle fallback failed ({err}), trying raw binary fallback: {filepath}")
+
+        return self._load_raw_binary(filepath)
 
     def _create_samples_from_binary(self):
         """Create dict-based samples for compatibility (only used for __len__)"""
