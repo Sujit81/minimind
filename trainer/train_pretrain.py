@@ -192,7 +192,8 @@ if __name__ == "__main__":
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="隐藏层数量")
     parser.add_argument('--max_seq_len', default=340, type=int, help="训练的最大截断长度（中文1token≈1.5~1.7字符）")
     parser.add_argument('--use_moe', default=0, type=int, choices=[0, 1], help="是否使用MoE架构（0=否，1=是）")
-    parser.add_argument("--data_path", type=str, default="../dataset/pretrain_hq.jsonl", help="预训练数据路径")
+    parser.add_argument("--data_path", type=str, default="../dataset/pretrain_hq.jsonl", help="训练数据路径（支持jsonl、.bin文件或包含train.bin的目录）")
+    parser.add_argument("--eval_data_path", type=str, default=None, help="评估数据路径（支持jsonl、.bin文件或包含eval.bin的目录，默认使用train数据）")
     parser.add_argument("--tokenizer_path", type=str, default="../model", help="tokenizer路径")
     parser.add_argument("--vocab_size", type=int, default=6400, help="词表大小 (6400=中文, 16000=英文)")
     parser.add_argument('--from_weight', default='none', type=str, help="基于哪个权重训练，为none则从头开始")
@@ -252,8 +253,15 @@ if __name__ == "__main__":
     model, tokenizer = init_model(lm_config, args.from_weight, tokenizer_path=args.tokenizer_path, device=args.device)
     train_ds = PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len)
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
-    # Create eval dataloader (uses same dataset, no shuffle for consistent eval)
-    eval_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+    # Create eval dataloader if eval_data_path is provided
+    if args.eval_data_path:
+        eval_ds = PretrainDataset(args.eval_data_path, tokenizer=tokenizer, max_length=args.max_seq_len)
+        eval_loader = DataLoader(eval_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        Logger(f'[Dataset] Using eval data: {args.eval_data_path}')
+    else:
+        # Use train data for eval (default behavior, backward compatible)
+        eval_loader = DataLoader(train_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
+        Logger('[Dataset] Using train data for evaluation (same as training data)')
     scaler = torch.cuda.amp.GradScaler(enabled=(args.dtype == 'float16'))
     optimizer = optim.AdamW(model.parameters(), lr=args.learning_rate)
     

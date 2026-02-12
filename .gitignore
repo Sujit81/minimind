@@ -14,3 +14,6 @@ trainer/__pycache__/train_pretrain.cpython-312.pyc
 __pycache__
 trainer/__pycache__/train_pretrain.cpython-312.pyc
 logs/pretrain_512_20260212_133431.log
+data/tokenized/val.bin
+data/tokenized/val_meta.json
+data/tokenized/train_meta.json
