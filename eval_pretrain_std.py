@@ -85,6 +85,27 @@ def init_model(args):
     return model.eval().to(args.device), tokenizer
 
 
+def sanitize_inputs(input_ids, attention_mask, vocab_size):
+    """Replace out-of-range token ids to avoid embedding index errors."""
+    invalid = (input_ids < 0) | (input_ids >= vocab_size)
+    invalid_count = int(invalid.sum().item())
+    if invalid_count > 0:
+        print(f"[Tokenizer] Found {invalid_count} out-of-range input token ids; replacing with 0")
+        input_ids = input_ids.clone()
+        input_ids[invalid] = 0
+    if attention_mask is None:
+        attention_mask = torch.ones_like(input_ids)
+    return input_ids, attention_mask
+
+
+def valid_special_token_id(token_id, vocab_size):
+    if token_id is None:
+        return None
+    if 0 <= int(token_id) < vocab_size:
+        return int(token_id)
+    return None
+
+
 def main():
     parser = argparse.ArgumentParser(description="MiniMind Pretrained Model - Text Continuation (Standard/Non-MoE)")
     parser.add_argument('--checkpoint', default='', type=str, help="Direct path to checkpoint file (e.g., out/pretrain_640_best.pth)")
@@ -151,26 +172,30 @@ def main():
         # For pretrained model, just use raw text (with BOS token)
         input_text = tokenizer.bos_token + prompt if tokenizer.bos_token else prompt
         inputs = tokenizer(input_text, return_tensors="pt", truncation=True).to(args.device)
+        input_ids, attention_mask = sanitize_inputs(inputs["input_ids"], inputs.get("attention_mask"), model.config.vocab_size)
+
+        pad_token_id = valid_special_token_id(tokenizer.pad_token_id, model.config.vocab_size)
+        eos_token_id = valid_special_token_id(tokenizer.eos_token_id, model.config.vocab_size)
 
         print("Generated: ", end='')
         st = time.time()
 
         with torch.no_grad():
             generated_ids = model.generate(
-                inputs=inputs["input_ids"],
-                attention_mask=inputs["attention_mask"],
+                inputs=input_ids,
+                attention_mask=attention_mask,
                 max_new_tokens=args.max_new_tokens,
                 do_sample=True,
                 streamer=streamer,
-                pad_token_id=tokenizer.pad_token_id,
-                eos_token_id=tokenizer.eos_token_id,
+                pad_token_id=pad_token_id,
+                eos_token_id=eos_token_id,
                 top_p=args.top_p,
                 top_k=args.top_k if args.top_k > 0 else None,
                 temperature=args.temperature,
                 repetition_penalty=args.repetition_penalty,
             )
 
-        gen_tokens = len(generated_ids[0]) - len(inputs["input_ids"][0])
+        gen_tokens = len(generated_ids[0]) - len(input_ids[0])
         elapsed = time.time() - st
 
         if args.show_speed:
