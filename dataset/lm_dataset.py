@@ -46,9 +46,6 @@ class BinaryPretrainDataset(Dataset):
         if not isinstance(data, np.ndarray):
             data = np.asarray(data, dtype=np.int32)
 
-        if data.dtype != np.int32:
-            data = data.astype(np.int32)
-
         if data.ndim == 1:
             total = (len(data) // self.max_length) * self.max_length
             if total == 0:
