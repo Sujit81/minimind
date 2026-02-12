@@ -5,11 +5,14 @@ Current: train.bin contains pickled Python objects
 Target: int32 numpy array (memory-mapped, non-pickled)
 
 Usage:
-    python scripts/migrate_binary_format.py
+    python scripts/migrate_binary_format.py [--no-backup]
+
+Note: Backup is optional and skipped by default if disk space is low.
 """
 import numpy as np
 import os
 import pickle
+import argparse
 
 # Configuration
 INPUT_FILE = "../dataset/train.bin"
@@ -18,7 +21,7 @@ SEQUENCE_LENGTH = 1024  # Expected sequence length
 DTYPE = np.int32  # int32 for compatibility
 
 
-def migrate_pickled_to_binary():
+def migrate_pickled_to_binary(no_backup=True):
     """Load pickled binary file and save as proper binary format"""
 
     if not os.path.exists(INPUT_FILE):
@@ -73,16 +76,20 @@ def migrate_pickled_to_binary():
     print(f"       Array shape: {tokens_array.shape}")
     print(f"       Dtype: {tokens_array.dtype}")
 
-    # Backup original file
-    backup_path = INPUT_FILE + ".pickle_backup"
-    print(f"[STEP 4] Backing up original file...")
-    print(f"       Backup: {backup_path}")
-    try:
-        os.rename(INPUT_FILE, backup_path)
-        print(f"       Done: {os.path.getsize(backup_path) / (1024*1024):.2f} MB")
-    except Exception as e:
-        print(f"[ERROR] Failed to backup: {e}")
-        return False
+    # Backup original file (optional)
+    if no_backup:
+        print("[STEP 4] Skipping backup (no-backup flag)")
+        backup_path = None
+    else:
+        print("[STEP 4] Backing up original file...")
+        backup_path = INPUT_FILE + ".pickle_backup"
+        print(f"       Backup: {backup_path}")
+        try:
+            os.rename(INPUT_FILE, backup_path)
+            print(f"       Done: {os.path.getsize(backup_path) / (1024*1024):.2f} MB")
+        except Exception as e:
+            print(f"[ERROR] Failed to backup: {e}")
+            return False
 
     # Save as binary (NOT pickled)
     print(f"[STEP 5] Saving as binary format...")
@@ -100,7 +107,10 @@ def migrate_pickled_to_binary():
     print(f"[SUCCESS] Migration complete!")
     print(f"   Original: {file_size:.2f} MB (pickled)")
     print(f"   New: {new_size:.2f} MB (binary)")
-    print(f"   Backup: {backup_path}")
+    if backup_path:
+        print(f"   Backup: {backup_path}")
+    else:
+        print(f"   No backup created (no-backup)")
     print()
     print("You can now run training with:")
     print(f"   python trainer/train_pretrain.py --data_path ../dataset/train.bin ...")
@@ -108,4 +118,8 @@ def migrate_pickled_to_binary():
 
 
 if __name__ == "__main__":
-    migrate_pickled_to_binary()
+    parser = argparse.ArgumentParser(description="Migrate pickled binary file to valid binary format")
+    parser.add_argument("--no-backup", action="store_true", help="Skip backup to save disk space")
+    args = parser.parse_args()
+
+    migrate_pickled_to_binary(no_backup=args.no_backup)
