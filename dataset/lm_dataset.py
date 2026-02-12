@@ -16,9 +16,12 @@ class BinaryPretrainDataset(Dataset):
     - Memory mapped (no loading into RAM)
     - No tokenizer needed during training
     """
-    def __init__(self, data_path, max_length=1024):
+    def __init__(self, data_path, max_length=1024, vocab_size=None):
         super().__init__()
         self.max_length = max_length
+        self.vocab_size = vocab_size
+        self.invalid_token_counter = 0
+        self._warned_invalid_tokens = False
 
         # Load binary file
         if os.path.isdir(data_path):
@@ -114,12 +117,37 @@ class BinaryPretrainDataset(Dataset):
         if not candidates:
             raise ValueError(f"Unsupported raw binary size for {filepath}: {file_size} bytes")
 
+        def invalid_ratio(arr):
+            if self.vocab_size is None or self.vocab_size <= 0:
+                return 0.0
+            sample_size = min(len(arr), 200000)
+            if sample_size == 0:
+                return 1.0
+            sample = np.asarray(arr[:sample_size])
+            invalid = (sample < 0) | (sample >= self.vocab_size)
+            return float(invalid.mean())
+
+        # When multiple dtypes are possible, select the one with the lowest invalid-token ratio.
+        if len(candidates) > 1:
+            scored = []
+            for dtype in candidates:
+                view = np.memmap(filepath, dtype=dtype, mode='r')
+                scored.append((invalid_ratio(view), dtype))
+            scored.sort(key=lambda x: x[0])
+            candidates = [dtype for _, dtype in scored]
+
         last_error = None
         for dtype in candidates:
             try:
                 data = np.memmap(filepath, dtype=dtype, mode='r')
                 data = self._ensure_sequence_array(data, filepath)
-                print(f"[BinaryPretrainDataset] Loaded raw binary with dtype={np.dtype(dtype).name}: {filepath}")
+                if self.vocab_size is not None and self.vocab_size > 0:
+                    check = np.asarray(data[: min(2048, len(data))]).reshape(-1)
+                    bad = int(((check < 0) | (check >= self.vocab_size)).sum())
+                    ratio = bad / max(1, check.size)
+                    print(f"[BinaryPretrainDataset] Loaded raw binary with dtype={np.dtype(dtype).name}: {filepath} (invalid_ratio≈{ratio:.6f})")
+                else:
+                    print(f"[BinaryPretrainDataset] Loaded raw binary with dtype={np.dtype(dtype).name}: {filepath}")
                 return data
             except Exception as err:
                 last_error = err
@@ -163,6 +191,19 @@ class BinaryPretrainDataset(Dataset):
         if self.mode.startswith('binary'):
             # Binary mode: direct token access
             tokens = self.train_data[index]
+            tokens = np.asarray(tokens, dtype=np.int32)
+
+            # Safety guard: avoid out-of-range embedding indices
+            if self.vocab_size is not None and self.vocab_size > 0:
+                invalid = (tokens < 0) | (tokens >= self.vocab_size)
+                invalid_count = int(invalid.sum())
+                if invalid_count > 0:
+                    tokens = tokens.copy()
+                    tokens[invalid] = 0
+                    self.invalid_token_counter += invalid_count
+                    if not self._warned_invalid_tokens:
+                        print(f"[BinaryPretrainDataset] Found out-of-range tokens, replacing with 0 (vocab_size={self.vocab_size})")
+                        self._warned_invalid_tokens = True
 
             # Pad/truncate to max_length
             if len(tokens) > self.max_length:
@@ -189,10 +230,11 @@ class PretrainDataset(Dataset):
     """
     Unified pretraining dataset supporting both JSONL and binary formats.
     """
-    def __init__(self, data_path, tokenizer, max_length=512):
+    def __init__(self, data_path, tokenizer, max_length=512, vocab_size=None):
         super().__init__()
         self.tokenizer = tokenizer
         self.max_length = max_length
+        self.vocab_size = vocab_size
 
         # Auto-detect format
         if os.path.isdir(data_path):
@@ -202,8 +244,8 @@ class PretrainDataset(Dataset):
 
             if os.path.exists(train_path):
                 print(f"[PretrainDataset] Using binary format: {train_path}")
-                self.train_data = BinaryPretrainDataset(train_path, max_length=max_length)
-                self.eval_data = BinaryPretrainDataset(eval_path, max_length=max_length) if os.path.exists(eval_path) else None
+                self.train_data = BinaryPretrainDataset(train_path, max_length=max_length, vocab_size=vocab_size)
+                self.eval_data = BinaryPretrainDataset(eval_path, max_length=max_length, vocab_size=vocab_size) if os.path.exists(eval_path) else None
                 self.mode = 'binary_dir'
                 self.samples = self.train_data
             elif os.path.exists(data_path + ".jsonl") or os.path.exists(data_path + ".json"):
@@ -217,7 +259,7 @@ class PretrainDataset(Dataset):
         elif data_path.endswith('.bin'):
             # Single binary file
             print(f"[PretrainDataset] Using binary file: {data_path}")
-            self.train_data = BinaryPretrainDataset(data_path, max_length=max_length)
+            self.train_data = BinaryPretrainDataset(data_path, max_length=max_length, vocab_size=vocab_size)
             self.eval_data = None
             self.mode = 'binary_file'
             self.samples = self.train_data

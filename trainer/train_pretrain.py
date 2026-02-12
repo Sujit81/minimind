@@ -261,11 +261,11 @@ if __name__ == "__main__":
     
     # ========== 5. 定义模型、数据、优化器 ==========
     model, tokenizer = init_model(lm_config, args.from_weight, tokenizer_path=args.tokenizer_path, device=args.device)
-    train_ds = PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len)
+    train_ds = PretrainDataset(args.data_path, tokenizer, max_length=args.max_seq_len, vocab_size=args.vocab_size)
     train_sampler = DistributedSampler(train_ds) if dist.is_initialized() else None
     # Create eval dataloader if eval_data_path is provided
     if args.eval_data_path:
-        eval_ds = PretrainDataset(args.eval_data_path, tokenizer=tokenizer, max_length=args.max_seq_len)
+        eval_ds = PretrainDataset(args.eval_data_path, tokenizer=tokenizer, max_length=args.max_seq_len, vocab_size=args.vocab_size)
         eval_loader = DataLoader(eval_ds, batch_size=args.batch_size, shuffle=False, num_workers=args.num_workers, pin_memory=True)
         Logger(f'[Dataset] Using eval data: {args.eval_data_path}')
     else:
