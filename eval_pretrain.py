@@ -206,7 +206,8 @@ def main():
     parser.add_argument('--top_k', default=50, type=int, help="Top-k sampling (0 to disable)")
     parser.add_argument('--repetition_penalty', default=1.2, type=float, help="Repetition penalty (1.0 = no penalty)")
     parser.add_argument('--show_speed', default=1, type=int, help="Show generation speed")
-    parser.add_argument('--ban_replacement_tokens', default=1, type=int, choices=[0, 1], help="Ban tokens that decode to replacement character (�)")
+    parser.add_argument('--ban_replacement_tokens', default=0, type=int, choices=[0, 1], help="Ban tokens that decode to replacement character (�)")
+    parser.add_argument('--prepend_bos', default=0, type=int, choices=[0, 1], help="Prepend BOS token before prompt")
     parser.add_argument('--device', default='cuda' if torch.cuda.is_available() else 'cpu', type=str)
     parser.add_argument('--seed', default=42, type=int, help="Random seed (-1 for random)")
     args = parser.parse_args()
@@ -261,9 +262,10 @@ def main():
 
         prompt = normalize_prompt(prompt)
 
-        # Prepend BOS only when its id is valid for current model vocab
+        # Prepend BOS optionally (disabled by default)
         bos_id = valid_special_token_id(tokenizer.bos_token_id, model.config.vocab_size)
-        input_text = (tokenizer.bos_token + prompt) if (tokenizer.bos_token and bos_id is not None) else prompt
+        use_bos = (args.prepend_bos == 1) and (tokenizer.bos_token is not None) and (bos_id is not None)
+        input_text = (tokenizer.bos_token + prompt) if use_bos else prompt
         inputs = tokenizer(
             input_text,
             return_tensors="pt",
