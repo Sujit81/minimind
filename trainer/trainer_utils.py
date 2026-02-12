@@ -339,7 +339,16 @@ def init_model(lm_config, from_weight='pretrain', tokenizer_path='../model', sav
     # Convert relative path to absolute path for local tokenizer loading
     if tokenizer_path.startswith('..') or tokenizer_path.startswith('.'):
         tokenizer_path = os.path.abspath(os.path.join(os.path.dirname(__file__), tokenizer_path))
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+    # Use tokenizers library for BPE tokenizer (doesn't require model_type in config)
+    try:
+        from tokenizers import Tokenizer
+        tokenizer = Tokenizer.from_file(os.path.join(tokenizer_path, "tokenizer.json"))
+        Logger(f"[init_model] Loaded BPE tokenizer from: {tokenizer_path}")
+    except Exception:
+        # Fallback to AutoTokenizer if tokenizers library fails
+        Logger(f"[init_model] Falling back to AutoTokenizer...")
+        from transformers import AutoTokenizer
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
     model = MiniMindForCausalLM(lm_config)
 
     if from_weight!= 'none':
