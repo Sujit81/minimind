@@ -21,6 +21,25 @@ def resolve_path(path):
     return os.path.abspath(os.path.join(SCRIPT_DIR, path))
 
 
+def infer_arch_from_state_dict(state_dict):
+    embed_key = 'model.embed_tokens.weight'
+    if embed_key not in state_dict:
+        raise KeyError(f"Checkpoint missing key: {embed_key}")
+
+    vocab_size, hidden_size = state_dict[embed_key].shape
+
+    layer_indices = []
+    layer_prefix = 'model.layers.'
+    for key in state_dict.keys():
+        if key.startswith(layer_prefix):
+            parts = key.split('.')
+            if len(parts) > 2 and parts[2].isdigit():
+                layer_indices.append(int(parts[2]))
+    num_hidden_layers = max(layer_indices) + 1 if layer_indices else 8
+
+    return int(hidden_size), int(num_hidden_layers), int(vocab_size)
+
+
 def init_model(args):
     tokenizer_path = resolve_path(args.tokenizer_path)
     tokenizer_file = os.path.join(tokenizer_path, "tokenizer.json")
@@ -41,13 +60,6 @@ def init_model(args):
         print(f"[Tokenizer] Loaded PreTrainedTokenizerFast from {tokenizer_file}")
     else:
         tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
-    model = MiniMindForCausalLM(MiniMindConfig(
-        hidden_size=args.hidden_size,
-        num_hidden_layers=args.num_hidden_layers,
-        use_moe=False,  # Standard model (non-MoE)
-        vocab_size=args.vocab_size,
-    ))
-
     # Use --checkpoint if provided, otherwise construct from save_dir/weight/hidden_size
     if args.checkpoint:
         ckp = resolve_path(args.checkpoint)
@@ -64,6 +76,19 @@ def init_model(args):
     else:
         state_dict = checkpoint
 
+    if args.auto_config == 1:
+        hidden_size, num_hidden_layers, vocab_size = infer_arch_from_state_dict(state_dict)
+    else:
+        hidden_size, num_hidden_layers, vocab_size = args.hidden_size, args.num_hidden_layers, args.vocab_size
+
+    model = MiniMindForCausalLM(MiniMindConfig(
+        hidden_size=hidden_size,
+        num_hidden_layers=num_hidden_layers,
+        use_moe=False,
+        vocab_size=vocab_size,
+    ))
+    print(f"[Config] hidden_size={hidden_size}, layers={num_hidden_layers}, vocab_size={vocab_size}, use_moe=0")
+
     moe_prefixes = ('.mlp.experts.', '.mlp.shared_experts.', '.mlp.gate.')
     moe_keys = [k for k in state_dict.keys() if any(prefix in k for prefix in moe_prefixes)]
     if moe_keys and args.allow_moe_checkpoint == 0:
@@ -73,8 +98,8 @@ def init_model(args):
             "or rerun this script with --allow_moe_checkpoint 1 to ignore MoE weights."
         )
 
-    # Load with strict=False to allow missing MoE keys when loading MoE checkpoint into standard model
-    model.load_state_dict(state_dict, strict=False)
+    # Strict load by default; set --strict_load 0 only for controlled partial load experiments.
+    model.load_state_dict(state_dict, strict=bool(args.strict_load))
 
     # Warn about MoE keys being ignored
     if moe_keys:
@@ -115,8 +140,11 @@ def main():
     parser.add_argument('--hidden_size', default=512, type=int, help="Hidden dimension (512=Small-26M)")
     parser.add_argument('--num_hidden_layers', default=8, type=int, help="Number of layers")
     parser.add_argument('--vocab_size', default=16000, type=int, help="Vocabulary size")
+    parser.add_argument('--auto_config', default=1, type=int, choices=[0, 1], help="Auto infer hidden_size/layers/vocab from checkpoint")
+    parser.add_argument('--strict_load', default=1, type=int, choices=[0, 1], help="Strict checkpoint loading (recommended: 1)")
     parser.add_argument('--allow_moe_checkpoint', default=0, type=int, choices=[0, 1], help="Allow loading MoE checkpoint into dense model (ignores MoE weights)")
     parser.add_argument('--max_new_tokens', default=200, type=int, help="Maximum tokens to generate")
+    parser.add_argument('--prompt_max_len', default=1024, type=int, help="Max prompt token length for truncation")
     parser.add_argument('--temperature', default=0.8, type=float, help="Sampling temperature (0.1-1.5)")
     parser.add_argument('--top_p', default=0.9, type=float, help="Nucleus sampling threshold")
     parser.add_argument('--top_k', default=50, type=int, help="Top-k sampling (0 to disable)")
@@ -172,7 +200,7 @@ def main():
         # Prepend BOS only when its id is valid for current model vocab
         bos_id = valid_special_token_id(tokenizer.bos_token_id, model.config.vocab_size)
         input_text = (tokenizer.bos_token + prompt) if (tokenizer.bos_token and bos_id is not None) else prompt
-        inputs = tokenizer(input_text, return_tensors="pt", truncation=True).to(args.device)
+        inputs = tokenizer(input_text, return_tensors="pt", truncation=True, max_length=args.prompt_max_len).to(args.device)
         input_ids, attention_mask = sanitize_inputs(inputs["input_ids"], inputs.get("attention_mask"), model.config.vocab_size)
 
         pad_token_id = valid_special_token_id(tokenizer.pad_token_id, model.config.vocab_size)
