@@ -17,3 +17,5 @@ logs/pretrain_512_20260212_133431.log
 data/tokenized/val.bin
 data/tokenized/val_meta.json
 data/tokenized/train_meta.json
+dataset/train.bin
+dataset/val.bin

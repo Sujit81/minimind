@@ -2,6 +2,7 @@ from torch.utils.data import Dataset
 import torch
 import os
 import numpy as np
+import pickle
 from datasets import load_dataset
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
@@ -37,12 +38,78 @@ class BinaryPretrainDataset(Dataset):
         else:
             raise ValueError(f"Unsupported data format: {data_path}. Expected .bin or directory with train.bin/eval.bin")
 
+    def _ensure_sequence_array(self, data, filepath):
+        """Normalize loaded data to shape [num_samples, seq_len]."""
+        if not isinstance(data, np.ndarray):
+            data = np.asarray(data, dtype=np.int32)
+
+        if data.dtype != np.int32:
+            data = data.astype(np.int32)
+
+        if data.ndim == 1:
+            total = (len(data) // self.max_length) * self.max_length
+            if total == 0:
+                raise ValueError(f"No enough tokens in {filepath} to form one sequence of length {self.max_length}")
+            if total < len(data):
+                print(f"[BinaryPretrainDataset] Trimmed {len(data) - total} tail tokens from {filepath}")
+            data = data[:total].reshape(-1, self.max_length)
+        elif data.ndim > 2:
+            data = data.reshape(data.shape[0], -1)
+
+        return data
+
+    def _extract_tokens_from_pickle(self, obj, out):
+        """Recursively extract integer tokens from common pickled structures."""
+        if isinstance(obj, (int, np.integer)):
+            out.append(int(obj))
+            return
+
+        if isinstance(obj, dict):
+            if 'tokens' in obj:
+                self._extract_tokens_from_pickle(obj['tokens'], out)
+            else:
+                for value in obj.values():
+                    self._extract_tokens_from_pickle(value, out)
+            return
+
+        if isinstance(obj, np.ndarray):
+            if obj.dtype == object:
+                for item in obj.tolist():
+                    self._extract_tokens_from_pickle(item, out)
+            else:
+                out.extend(obj.astype(np.int64).reshape(-1).tolist())
+            return
+
+        if isinstance(obj, (list, tuple)):
+            for item in obj:
+                self._extract_tokens_from_pickle(item, out)
+
+    def _load_pickled_binary(self, filepath):
+        """Load legacy pickled .bin format and convert to fixed-length int32 sequences."""
+        with open(filepath, 'rb') as f:
+            obj = pickle.load(f)
+
+        if isinstance(obj, np.ndarray) and obj.dtype != object:
+            return self._ensure_sequence_array(obj, filepath)
+
+        tokens = []
+        self._extract_tokens_from_pickle(obj, tokens)
+        if len(tokens) == 0:
+            raise ValueError(f"No integer tokens extracted from pickled file: {filepath}")
+
+        return self._ensure_sequence_array(np.asarray(tokens, dtype=np.int32), filepath)
+
     def _load_binary(self, filepath):
-        """Load binary file as memory-mapped numpy array"""
-        # Binary format: int32 tokens, shape (num_samples, seq_len)
-        # Using memory mapping for O(1) memory
-        data = np.load(filepath, mmap_mode='r')
-        return data.astype(np.int32)
+        """Load .bin file as numpy format; fallback to legacy pickle format."""
+        try:
+            data = np.load(filepath, mmap_mode='r', allow_pickle=False)
+            return self._ensure_sequence_array(data, filepath)
+        except ValueError as err:
+            err_text = str(err).lower()
+            if 'pickled' not in err_text and 'allow_pickle' not in err_text:
+                raise
+            print(f"[BinaryPretrainDataset] Detected legacy pickled binary: {filepath}, loading with pickle fallback")
+            return self._load_pickled_binary(filepath)
 
     def _create_samples_from_binary(self):
         """Create dict-based samples for compatibility (only used for __len__)"""
@@ -131,7 +198,7 @@ class PretrainDataset(Dataset):
 
     def __len__(self):
         if self.mode.startswith('binary'):
-            return self.train_data.shape[0] if self.train_data is not None else 0
+            return len(self.train_data) if self.train_data is not None else 0
         return len(self.samples)
 
     def __getitem__(self, index):

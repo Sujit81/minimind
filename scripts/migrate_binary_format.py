@@ -28,8 +28,9 @@ def get_input_path(filename):
         return filename
 
     # Method 2: Look in parent directories for dataset folder
+    test_path = cwd
     for _ in range(3):
-        test_path = os.path.dirname(cwd) if _ == 0 else os.path.dirname(cwd)
+        test_path = os.path.dirname(test_path)
         if os.path.exists(os.path.join(test_path, 'dataset')):
             print(f"[INFO] Found dataset directory at: {test_path}")
             return os.path.join(test_path, filename)
@@ -66,19 +67,32 @@ def migrate_pickled_to_binary(no_backup=True):
         print(f"[ERROR] Failed to load pickle file: {e}")
         return False
 
+    def extract_tokens(obj, out):
+        if isinstance(obj, (int, np.integer)):
+            out.append(int(obj))
+            return
+        if isinstance(obj, dict):
+            if 'tokens' in obj:
+                extract_tokens(obj['tokens'], out)
+            else:
+                for value in obj.values():
+                    extract_tokens(value, out)
+            return
+        if isinstance(obj, np.ndarray):
+            if obj.dtype == object:
+                for item in obj.tolist():
+                    extract_tokens(item, out)
+            else:
+                out.extend(obj.astype(np.int64).reshape(-1).tolist())
+            return
+        if isinstance(obj, (list, tuple)):
+            for item in obj:
+                extract_tokens(item, out)
+
     # Extract tokens from pickled objects
     print("[STEP 2] Extracting tokens...")
     all_tokens = []
-    for obj in data:
-        # Handle different possible formats
-        if isinstance(obj, dict) and 'tokens' in obj:
-            all_tokens.extend(obj['tokens'])
-        elif isinstance(obj, (list, tuple)):
-            all_tokens.extend(obj)
-        elif isinstance(obj, int):
-            all_tokens.append(obj)
-        else:
-            print(f"[WARNING] Unexpected object type: {type(obj)}, skipping...")
+    extract_tokens(data, all_tokens)
 
     print(f"       Total tokens: {len(all_tokens)}")
 
@@ -92,7 +106,7 @@ def migrate_pickled_to_binary(no_backup=True):
     total_tokens = num_seqs * SEQUENCE_LENGTH
 
     # Create int32 array
-    tokens_array = np.array(all_tokens[:total_tokens], dtype=TYPE)
+    tokens_array = np.array(all_tokens[:total_tokens], dtype=TYPE).reshape(num_seqs, SEQUENCE_LENGTH)
     print(f"       Sequences: {num_seqs}")
     print(f"       Total tokens: {len(tokens_array)}")
     print(f"       Array shape: {tokens_array.shape}")
@@ -117,7 +131,8 @@ def migrate_pickled_to_binary(no_backup=True):
     print(f"[STEP 5] Saving as binary format...")
     print(f"       Output: {input_file}")
     try:
-        np.save(input_file, tokens_array, allow_pickle=False)
+        with open(input_file, 'wb') as f:
+            np.save(f, tokens_array, allow_pickle=False)
         print(f"       Done!")
     except Exception as e:
         print(f"[ERROR] Failed to save: {e}")
