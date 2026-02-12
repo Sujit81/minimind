@@ -15,29 +15,51 @@ import pickle
 import argparse
 
 # Configuration
-INPUT_FILE = "../dataset/train.bin"
-OUTPUT_FILE = "../dataset/train.bin"
 SEQUENCE_LENGTH = 1024  # Expected sequence length
-DTYPE = np.int32  # int32 for compatibility
+TYPE = np.int32  # int32 for compatibility
+
+
+def get_input_path(filename):
+    """Get correct path for input file - handles being run from different directories"""
+    # Method 1: Check current directory first
+    cwd = os.getcwd()
+    if os.path.exists(filename):
+        print(f"[INFO] Found {filename} in current directory")
+        return filename
+
+    # Method 2: Look in parent directories for dataset folder
+    for _ in range(3):
+        test_path = os.path.dirname(cwd) if _ == 0 else os.path.dirname(cwd)
+        if os.path.exists(os.path.join(test_path, 'dataset')):
+            print(f"[INFO] Found dataset directory at: {test_path}")
+            return os.path.join(test_path, filename)
+
+    # Method 3: Use project root if nothing else works
+    print(f"[WARN] Could not auto-detect location, using current directory")
+    return os.path.abspath(os.path.join(cwd, filename))
 
 
 def migrate_pickled_to_binary(no_backup=True):
     """Load pickled binary file and save as proper binary format"""
 
-    if not os.path.exists(INPUT_FILE):
-        print(f"[ERROR] Input file not found: {INPUT_FILE}")
+    # Get correct input path (works from any running location)
+    input_file = get_input_path("dataset/train.bin")
+
+    if not os.path.exists(input_file):
+        print(f"[ERROR] Input file not found: {input_file}")
+        print(f"       Searched in: {os.getcwd()}")
         return False
 
     # Get file size
-    file_size = os.path.getsize(INPUT_FILE) / (1024 * 1024)  # MB
-    print(f"[INFO] Input file: {INPUT_FILE}")
+    file_size = os.path.getsize(input_file) / (1024 * 1024)  # MB
+    print(f"[INFO] Input file: {input_file}")
     print(f"       Size: {file_size:.2f} MB")
     print()
 
     # Load the pickled data
     print("[STEP 1] Loading pickled data...")
     try:
-        with open(INPUT_FILE, 'rb') as f:
+        with open(input_file, 'rb') as f:
             data = pickle.load(f)
         print(f"       Loaded {len(data)} objects")
     except Exception as e:
@@ -82,10 +104,10 @@ def migrate_pickled_to_binary(no_backup=True):
         backup_path = None
     else:
         print("[STEP 4] Backing up original file...")
-        backup_path = INPUT_FILE + ".pickle_backup"
+        backup_path = input_file + ".pickle_backup"
         print(f"       Backup: {backup_path}")
         try:
-            os.rename(INPUT_FILE, backup_path)
+            os.rename(input_file, backup_path)
             print(f"       Done: {os.path.getsize(backup_path) / (1024*1024):.2f} MB")
         except Exception as e:
             print(f"[ERROR] Failed to backup: {e}")
@@ -93,16 +115,16 @@ def migrate_pickled_to_binary(no_backup=True):
 
     # Save as binary (NOT pickled)
     print(f"[STEP 5] Saving as binary format...")
-    print(f"       Output: {OUTPUT_FILE}")
+    print(f"       Output: {input_file}")
     try:
-        np.save(OUTPUT_FILE, tokens_array, allow_pickle=False)
+        np.save(input_file, tokens_array, allow_pickle=False)
         print(f"       Done!")
     except Exception as e:
         print(f"[ERROR] Failed to save: {e}")
         return False
 
     # Verify
-    new_size = os.path.getsize(OUTPUT_FILE) / (1024 * 1024)  # MB
+    new_size = os.path.getsize(input_file) / (1024 * 1024)  # MB
     print()
     print(f"[SUCCESS] Migration complete!")
     print(f"   Original: {file_size:.2f} MB (pickled)")
