@@ -55,7 +55,8 @@ def infer_arch_from_state_dict(state_dict):
                 layer_indices.append(int(parts[2]))
     num_hidden_layers = max(layer_indices) + 1 if layer_indices else 8
 
-    use_moe = any(('experts' in key) or ('shared_experts' in key) or ('gate' in key) for key in state_dict.keys())
+    moe_prefixes = ('.mlp.experts.', '.mlp.shared_experts.', '.mlp.gate.')
+    use_moe = any(any(prefix in key for prefix in moe_prefixes) for key in state_dict.keys())
 
     return {
         'hidden_size': int(hidden_size),

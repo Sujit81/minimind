@@ -68,7 +68,8 @@ def init_model(args):
     else:
         state_dict = checkpoint
 
-    moe_keys = [k for k in state_dict.keys() if 'experts' in k or 'shared_experts' in k or 'gate' in k]
+    moe_prefixes = ('.mlp.experts.', '.mlp.shared_experts.', '.mlp.gate.')
+    moe_keys = [k for k in state_dict.keys() if any(prefix in k for prefix in moe_prefixes)]
     if moe_keys and args.allow_moe_checkpoint == 0:
         raise ValueError(
             "Checkpoint appears to be MoE, but eval_pretrain_std.py is standard (non-MoE). "
