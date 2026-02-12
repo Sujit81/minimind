@@ -131,6 +131,13 @@ def valid_special_token_id(token_id, vocab_size):
     return None
 
 
+def normalize_prompt(prompt):
+    """Ensure continuation starts at a word boundary."""
+    if prompt and not prompt[-1].isspace():
+        return prompt + ' '
+    return prompt
+
+
 def main():
     parser = argparse.ArgumentParser(description="MiniMind Pretrained Model - Text Continuation (Standard/Non-MoE)")
     parser.add_argument('--checkpoint', default='', type=str, help="Direct path to checkpoint file (e.g., out/pretrain_640_best.pth)")
@@ -197,10 +204,18 @@ def main():
         if input_mode == '0':
             print(f"\nPrompt: {prompt}")
 
+        prompt = normalize_prompt(prompt)
+
         # Prepend BOS only when its id is valid for current model vocab
         bos_id = valid_special_token_id(tokenizer.bos_token_id, model.config.vocab_size)
         input_text = (tokenizer.bos_token + prompt) if (tokenizer.bos_token and bos_id is not None) else prompt
-        inputs = tokenizer(input_text, return_tensors="pt", truncation=True, max_length=args.prompt_max_len).to(args.device)
+        inputs = tokenizer(
+            input_text,
+            return_tensors="pt",
+            truncation=True,
+            max_length=args.prompt_max_len,
+            add_special_tokens=False,
+        ).to(args.device)
         input_ids, attention_mask = sanitize_inputs(inputs["input_ids"], inputs.get("attention_mask"), model.config.vocab_size)
 
         pad_token_id = valid_special_token_id(tokenizer.pad_token_id, model.config.vocab_size)
