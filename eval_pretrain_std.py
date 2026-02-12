@@ -239,6 +239,9 @@ def main():
                 repetition_penalty=args.repetition_penalty,
             )
 
+        full_text = tokenizer.decode(generated_ids[0], skip_special_tokens=True)
+        print(f"\nFull decoded: {full_text}")
+
         gen_tokens = len(generated_ids[0]) - len(input_ids[0])
         elapsed = time.time() - st
 
