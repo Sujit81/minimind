@@ -2,8 +2,9 @@ import os
 import time
 import argparse
 import warnings
+import json
 import torch
-from transformers import AutoTokenizer, TextStreamer
+from transformers import AutoTokenizer, TextStreamer, PreTrainedTokenizerFast
 from model.model_minimind import MiniMindConfig, MiniMindForCausalLM
 from trainer.trainer_utils import setup_seed, get_model_params
 
@@ -22,7 +23,28 @@ def resolve_path(path):
 
 def init_model(args):
     tokenizer_path = resolve_path(args.tokenizer_path)
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+    try:
+        tokenizer = AutoTokenizer.from_pretrained(tokenizer_path)
+    except Exception as err:
+        print(f"[Tokenizer] AutoTokenizer failed: {err}")
+        tokenizer_file = os.path.join(tokenizer_path, "tokenizer.json")
+        if not os.path.exists(tokenizer_file):
+            raise FileNotFoundError(f"tokenizer.json not found in {tokenizer_path}")
+
+        config_file = os.path.join(tokenizer_path, "tokenizer_config.json")
+        cfg = {}
+        if os.path.exists(config_file):
+            with open(config_file, 'r', encoding='utf-8') as f:
+                cfg = json.load(f)
+
+        tokenizer = PreTrainedTokenizerFast(
+            tokenizer_file=tokenizer_file,
+            bos_token=cfg.get('bos_token', '<bos>'),
+            eos_token=cfg.get('eos_token', '<eos>'),
+            unk_token=cfg.get('unk_token', '<unk>'),
+            pad_token=cfg.get('pad_token', '<pad>'),
+        )
+        print(f"[Tokenizer] Loaded PreTrainedTokenizerFast from {tokenizer_file}")
     model = MiniMindForCausalLM(MiniMindConfig(
         hidden_size=args.hidden_size,
         num_hidden_layers=args.num_hidden_layers,
