@@ -177,13 +177,7 @@ def save_binary_batched(parquet_local_paths, output_dir, tokenizer_path, max_sam
     vocab_size = tokenizer.get_vocab_size()
     dtype = np.uint16 if vocab_size < 65535 else np.int32
 
-    # EOS token for document boundaries
-    eos_id = tokenizer.token_to_id("<eos>")
-    if eos_id is None:
-        eos_id = tokenizer.token_to_id("</s>")
-    if eos_id is None:
-        eos_id = tokenizer.token_to_id("<|endoftext|>")
-    print(f"Tokenizer: vocab_size={vocab_size}, dtype={np.dtype(dtype).name}, eos_id={eos_id}")
+    print(f"Tokenizer: vocab_size={vocab_size}, dtype={np.dtype(dtype).name}")
 
     bin_dir = os.path.join(output_dir, "fineweb_edu")
     os.makedirs(bin_dir, exist_ok=True)
@@ -217,10 +211,7 @@ def save_binary_batched(parquet_local_paths, output_dir, tokenizer_path, max_sam
             encodings = tokenizer.encode_batch(texts)
 
             for i, enc in enumerate(encodings):
-                ids = list(enc.ids)
-                if eos_id is not None:
-                    ids.append(eos_id)
-                tokens = np.array(ids, dtype=dtype)
+                tokens = np.array(enc.ids, dtype=dtype)
 
                 if eval_every > 0 and (n_total + i) % eval_every == 0:
                     tokens.tofile(f_eval)
