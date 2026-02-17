@@ -150,10 +150,11 @@ def main():
     # Dataset selection
     parser.add_argument("--dataset_name", type=str, default="HuggingFaceFW/fineweb-edu",
                         help="HuggingFace dataset id (default: HuggingFaceFW/fineweb-edu)")
-    parser.add_argument("--dataset_subset", type=str, default="sample-10BT",
-                        help="Subset / config name (default: sample-10BT). "
-                             "Common values: sample-10BT, sample-100BT, sample-350BT, "
-                             "or CC-MAIN-20XX-YY for raw Common Crawl dumps")
+    parser.add_argument("--dataset_subset", type=str, default=None,
+                        help="Subset / config name (default: None, i.e. no subset). "
+                             "FineWeb-Edu values: sample-10BT, sample-100BT, sample-350BT, "
+                             "or CC-MAIN-20XX-YY for raw Common Crawl dumps. "
+                             "Omit for datasets with no subsets.")
     parser.add_argument("--split", type=str, default="train",
                         help="Dataset split (default: train)")
     parser.add_argument("--max_samples", type=int, default=None,
@@ -188,7 +189,7 @@ def main():
 
     # ------------------------------------------------------------------
     print(f"Dataset:     {args.dataset_name}")
-    print(f"Subset:      {args.dataset_subset}")
+    print(f"Subset:      {args.dataset_subset or '(none)'}")
     print(f"Split:       {args.split}")
     print(f"Format:      {args.format}")
     print(f"Max docs:    {args.max_samples or 'all'}")
@@ -208,9 +209,10 @@ def main():
 
     load_kwargs = dict(
         path=args.dataset_name,
-        name=args.dataset_subset,
         split=split_str,
     )
+    if args.dataset_subset:
+        load_kwargs["name"] = args.dataset_subset
     if args.hf_token:
         load_kwargs["token"] = args.hf_token
 
