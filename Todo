@@ -1,0 +1,68 @@
+The script works. Here's a summary of what was implemented:                                                                            
+  ---                                                                                                                                   Changes Made                                                                                                                                                                                                                                                                1. New: scripts/download_fineweb_edu.py                                                                                                                                                                                                                                   
+  Usage:
+
+  # Download CC-MAIN-2025-26 subset, 100K docs, JSONL format
+  python scripts/download_fineweb_edu.py \
+      --dataset_subset CC-MAIN-2025-26 \
+      --max_samples 100000
+
+  # Same but pre-tokenized binary with 8 workers
+  python scripts/download_fineweb_edu.py \
+      --dataset_subset CC-MAIN-2025-26 \
+      --format binary \
+      --max_samples 100000 \
+      --num_workers 8
+
+  python trainer/train_pretrain.py \                                                                                                        --data_path dataset/fineweb_edu/train.bin \                                                                                     
+      --eval_data_path dataset/fineweb_edu/eval.bin \                                                                                 
+      --tokenizer_path tokenizer \  
+      --vocab_size 32000      
+
+
+  CLI arguments:
+
+  ┌──────────────────┬───────────────────────────┬────────────────────────────────────────────┐
+  │     Argument     │          Default          │                Description                 │
+  ├──────────────────┼───────────────────────────┼────────────────────────────────────────────┤
+  │ --dataset_name   │ HuggingFaceFW/fineweb-edu │ HuggingFace dataset id                     │
+  ├──────────────────┼───────────────────────────┼────────────────────────────────────────────┤
+  │ --dataset_subset │ sample-10BT               │ Subset (e.g. sample-10BT, CC-MAIN-2025-26) │
+  ├──────────────────┼───────────────────────────┼────────────────────────────────────────────┤
+  │ --max_samples    │ all                       │ Limit number of documents                  │
+  ├──────────────────┼───────────────────────────┼────────────────────────────────────────────┤
+  │ --format         │ jsonl                     │ jsonl or binary                            │
+  ├──────────────────┼───────────────────────────┼────────────────────────────────────────────┤
+  │ --output_dir     │ dataset                   │ Where to save                              │
+  ├──────────────────┼───────────────────────────┼────────────────────────────────────────────┤
+  │ --tokenizer_path │ tokenizer                 │ For binary mode                            │
+  ├──────────────────┼───────────────────────────┼────────────────────────────────────────────┤
+  │ --eval_ratio     │ 0.01                      │ 1% held out for eval                       │
+  ├──────────────────┼───────────────────────────┼────────────────────────────────────────────┤
+  │ --hf_token       │ None                      │ For gated datasets                         │
+  └──────────────────┴───────────────────────────┴────────────────────────────────────────────┘
+
+  2. Fixed: dataset/lm_dataset.py (line 279-309)
+
+  The JSONL code path in PretrainDataset.__getitem__ previously called self.tokenizer(text, ...) which only works with HuggingFace's  
+  PreTrainedTokenizer. But init_model loads a raw tokenizers.Tokenizer by default. Fixed by detecting the tokenizer type via
+  hasattr(self.tokenizer, 'get_vocab_size') and using the appropriate encode API for each.
+
+  ---
+  Full pipeline example
+
+  # Step 1: Download
+  python scripts/download_fineweb_edu.py \
+      --dataset_subset CC-MAIN-2025-26 \
+      --max_samples 100000
+
+  # Step 2: Train
+  python trainer/train_pretrain.py \
+      --data_path dataset/fineweb_edu_train.jsonl \
+      --eval_data_path dataset/fineweb_edu_eval.jsonl \
+      --tokenizer_path tokenizer \
+      --vocab_size 32000
+
+
+  Note: since FineWeb-Edu is English text, use --vocab_size 32000 (matching the English tokenizer in tokenizer/) and --tokenizer_path 
+  tokenizer instead of the Chinese defaults.
