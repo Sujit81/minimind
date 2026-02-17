@@ -207,8 +207,8 @@ def save_binary_batched(parquet_local_paths, output_dir, tokenizer_path, max_sam
             if not texts:
                 continue
 
-            # Batch tokenize (tokenizers lib uses internal thread parallelism)
-            encodings = tokenizer.encode_batch(texts)
+            # Batch tokenize (no special tokens — raw content only for pretraining)
+            encodings = tokenizer.encode_batch(texts, add_special_tokens=False)
 
             for i, enc in enumerate(encodings):
                 tokens = np.array(enc.ids, dtype=dtype)

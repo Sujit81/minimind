@@ -287,7 +287,7 @@ class PretrainDataset(Dataset):
 
             # Raw tokenizers.Tokenizer (from tokenizers library)
             if hasattr(self.tokenizer, 'get_vocab_size'):
-                ids = self.tokenizer.encode(text).ids[:self.max_length]
+                ids = self.tokenizer.encode(text, add_special_tokens=False).ids[:self.max_length]
                 pad_id = 0
                 ids += [pad_id] * (self.max_length - len(ids))
                 input_ids = torch.tensor(ids, dtype=torch.long)
