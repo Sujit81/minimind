@@ -14,6 +14,8 @@ The script works. Here's a summary of what was implemented:
       --max_samples 100000 \
       --num_workers 8
 
+python scripts/download_fineweb_edu.py --dataset_subset CC-MAIN-2025-26 --format binary --max_samples 3000000 --num_workers 20      
+
   python trainer/train_pretrain.py \                                                                                                        --data_path dataset/fineweb_edu/train.bin \                                                                                     
       --eval_data_path dataset/fineweb_edu/eval.bin \                                                                                 
       --tokenizer_path tokenizer \  

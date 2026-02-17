@@ -84,13 +84,23 @@ def save_binary(train_ds, eval_ds, output_dir, tokenizer_path, num_workers):
     tokenizer = Tokenizer.from_file(tok_file)
     vocab_size = tokenizer.get_vocab_size()
     dtype = np.uint16 if vocab_size < 65535 else np.int32
-    print(f"Tokenizer: vocab_size={vocab_size}, dtype={np.dtype(dtype).name}")
+
+    # Resolve EOS token id for document boundary markers
+    eos_id = tokenizer.token_to_id("<eos>")
+    if eos_id is None:
+        eos_id = tokenizer.token_to_id("</s>")
+    if eos_id is None:
+        eos_id = tokenizer.token_to_id("<|endoftext|>")
+    print(f"Tokenizer: vocab_size={vocab_size}, dtype={np.dtype(dtype).name}, eos_id={eos_id}")
 
     def tokenize_batch(examples):
-        """Batch tokenization function for Dataset.map()."""
+        """Batch tokenization — appends EOS after each document."""
         all_ids = []
         for text in examples["text"]:
-            all_ids.append(tokenizer.encode(text).ids)
+            ids = tokenizer.encode(text).ids
+            if eos_id is not None:
+                ids.append(eos_id)
+            all_ids.append(ids)
         return {"input_ids": all_ids}
 
     def tokenize_and_save(ds, path, label):
